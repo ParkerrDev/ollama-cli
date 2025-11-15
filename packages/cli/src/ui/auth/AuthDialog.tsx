@@ -41,33 +41,33 @@ export function AuthDialog({
   onAuthError,
 }: AuthDialogProps): React.JSX.Element {
   let items = [
-    {
-      label: 'Login with Google',
-      value: AuthType.LOGIN_WITH_GOOGLE,
-      key: AuthType.LOGIN_WITH_GOOGLE,
-    },
-    ...(process.env['CLOUD_SHELL'] === 'true'
-      ? [
-          {
-            label: 'Use Cloud Shell user credentials',
-            value: AuthType.COMPUTE_ADC,
-            key: AuthType.COMPUTE_ADC,
-          },
-        ]
-      : process.env['OLLAMA_CLI_USE_COMPUTE_ADC'] === 'true'
-        ? [
-            {
-              label: 'Use metadata server application default credentials',
-              value: AuthType.COMPUTE_ADC,
-              key: AuthType.COMPUTE_ADC,
-            },
-          ]
-        : []),
-    {
-      label: 'Use Ollama API Key',
-      value: AuthType.USE_OLLAMA,
-      key: AuthType.USE_OLLAMA,
-    },
+    // {
+    //   label: 'Login with Google',
+    //   value: AuthType.LOGIN_WITH_GOOGLE,
+    //   key: AuthType.LOGIN_WITH_GOOGLE,
+    // },
+    // ...(process.env['CLOUD_SHELL'] === 'true'
+    //   ? [
+    //       {
+    //         label: 'Use Cloud Shell user credentials',
+    //         value: AuthType.COMPUTE_ADC,
+    //         key: AuthType.COMPUTE_ADC,
+    //       },
+    //     ]
+    //   : process.env['OLLAMA_CLI_USE_COMPUTE_ADC'] === 'true'
+    //     ? [
+    //         {
+    //           label: 'Use metadata server application default credentials',
+    //           value: AuthType.COMPUTE_ADC,
+    //           key: AuthType.COMPUTE_ADC,
+    //         },
+    //       ]
+    //     : []),
+    // {
+    //   label: 'Use Ollama API Key',
+    //   value: AuthType.USE_OLLAMA,
+    //   key: AuthType.USE_OLLAMA,
+    // },
     {
       label: 'Vertex AI',
       value: AuthType.USE_VERTEX_AI,

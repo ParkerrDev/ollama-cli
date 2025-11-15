@@ -12,14 +12,10 @@ import type {
   EmbedContentResponse,
   EmbedContentParameters,
 } from '@google/genai';
-import { GoogleGenAI } from '@google/genai';
-import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
 import type { Config } from '../config/config.js';
-import { loadApiKey } from './apiKeyCredentialStorage.js';
 
 import type { UserTierId } from '../code_assist/types.js';
 import { LoggingContentGenerator } from './loggingContentGenerator.js';
-import { InstallationManager } from '../utils/installationManager.js';
 import { FakeContentGenerator } from './fakeContentGenerator.js';
 import { RecordingContentGenerator } from './recordingContentGenerator.js';
 
@@ -45,11 +41,7 @@ export interface ContentGenerator {
 }
 
 export enum AuthType {
-  LOGIN_WITH_GOOGLE = 'oauth-personal',
-  USE_OLLAMA = 'ollama-api-key',
-  USE_VERTEX_AI = 'vertex-ai',
-  LEGACY_CLOUD_SHELL = 'cloud-shell',
-  COMPUTE_ADC = 'compute-default-credentials',
+  USE_OLLAMA_SERVER = 'ollama-server',
 }
 
 export type ContentGeneratorConfig = {
@@ -57,50 +49,26 @@ export type ContentGeneratorConfig = {
   vertexai?: boolean;
   authType?: AuthType;
   proxy?: string;
+  baseUrl?: string;
+  timeout?: number;
+  model?: string;
 };
 
 export async function createContentGeneratorConfig(
   config: Config,
   authType: AuthType | undefined,
 ): Promise<ContentGeneratorConfig> {
-  const ollamaApiKey =
-    (await loadApiKey()) || process.env['OLLAMA_API_KEY'] || undefined;
-  const googleApiKey = process.env['GOOGLE_API_KEY'] || undefined;
-  const googleCloudProject =
-    process.env['GOOGLE_CLOUD_PROJECT'] ||
-    process.env['GOOGLE_CLOUD_PROJECT_ID'] ||
-    undefined;
-  const googleCloudLocation = process.env['GOOGLE_CLOUD_LOCATION'] || undefined;
+  const ollamaBaseUrl = process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+  const ollamaTimeout = process.env['OLLAMA_TIMEOUT'] 
+    ? parseInt(process.env['OLLAMA_TIMEOUT'], 10) 
+    : 60000;
 
   const contentGeneratorConfig: ContentGeneratorConfig = {
-    authType,
+    authType: authType || AuthType.USE_OLLAMA_SERVER,
     proxy: config?.getProxy(),
+    baseUrl: ollamaBaseUrl,
+    timeout: ollamaTimeout,
   };
-
-  // If we are using Google auth or we are in Cloud Shell, there is nothing else to validate for now
-  if (
-    authType === AuthType.LOGIN_WITH_GOOGLE ||
-    authType === AuthType.COMPUTE_ADC
-  ) {
-    return contentGeneratorConfig;
-  }
-
-  if (authType === AuthType.USE_OLLAMA && ollamaApiKey) {
-    contentGeneratorConfig.apiKey = ollamaApiKey;
-    contentGeneratorConfig.vertexai = false;
-
-    return contentGeneratorConfig;
-  }
-
-  if (
-    authType === AuthType.USE_VERTEX_AI &&
-    (googleApiKey || (googleCloudProject && googleCloudLocation))
-  ) {
-    contentGeneratorConfig.apiKey = googleApiKey;
-    contentGeneratorConfig.vertexai = true;
-
-    return contentGeneratorConfig;
-  }
 
   return contentGeneratorConfig;
 }
@@ -114,49 +82,30 @@ export async function createContentGenerator(
     if (gcConfig.fakeResponses) {
       return FakeContentGenerator.fromFile(gcConfig.fakeResponses);
     }
+    
     const version = process.env['CLI_VERSION'] || process.version;
     const userAgent = `OllamaCLI/${version} (${process.platform}; ${process.arch})`;
     const baseHeaders: Record<string, string> = {
       'User-Agent': userAgent,
     };
-    if (
-      config.authType === AuthType.LOGIN_WITH_GOOGLE ||
-      config.authType === AuthType.COMPUTE_ADC
-    ) {
-      const httpOptions = { headers: baseHeaders };
+
+    // For Ollama server, we use OpenAI-compatible API
+    if (config.authType === AuthType.USE_OLLAMA_SERVER) {
+      // Import dynamically to avoid circular dependencies
+      const { OpenAICompatibleContentGenerator } = await import('../adapters/openaiCompatibleContentGenerator.js');
+      
+      const ollamaConfig = {
+        ...config,
+        baseUrl: `${config.baseUrl}/v1`, // Ollama uses OpenAI-compatible /v1 endpoint
+        apiKey: 'dummy-key', // Ollama doesn't require API key
+      };
+      
       return new LoggingContentGenerator(
-        await createCodeAssistContentGenerator(
-          httpOptions,
-          config.authType,
-          gcConfig,
-          sessionId,
-        ),
+        new OpenAICompatibleContentGenerator(ollamaConfig),
         gcConfig,
       );
     }
-
-    if (
-      config.authType === AuthType.USE_OLLAMA ||
-      config.authType === AuthType.USE_VERTEX_AI
-    ) {
-      let headers: Record<string, string> = { ...baseHeaders };
-      if (gcConfig?.getUsageStatisticsEnabled()) {
-        const installationManager = new InstallationManager();
-        const installationId = installationManager.getInstallationId();
-        headers = {
-          ...headers,
-          'x-ollama-api-privileged-user-id': `${installationId}`,
-        };
-      }
-      const httpOptions = { headers };
-
-      const googleGenAI = new GoogleGenAI({
-        apiKey: config.apiKey === '' ? undefined : config.apiKey,
-        vertexai: config.vertexai,
-        httpOptions,
-      });
-      return new LoggingContentGenerator(googleGenAI.models, gcConfig);
-    }
+    
     throw new Error(
       `Error creating contentGenerator: Unsupported authType: ${config.authType}`,
     );
