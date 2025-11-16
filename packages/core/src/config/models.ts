@@ -4,12 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Default Ollama models - these should match models available in your Ollama instance
-export const DEFAULT_OLLAMA_MODEL = 'huihui_ai/qwen2.5-coder-abliterate:7b';
-export const DEFAULT_OLLAMA_FLASH_MODEL = 'freehuntx/qwen3-coder:8b';
-export const DEFAULT_OLLAMA_FLASH_LITE_MODEL = 'freehuntx/qwen3-coder:8b';
+// Default Ollama models - users should specify their own models via --model flag
+// These are just fallback defaults
+export const DEFAULT_OLLAMA_MODEL = 'llama3.2';
+export const DEFAULT_OLLAMA_FLASH_MODEL = 'llama3.2';
+export const DEFAULT_OLLAMA_FLASH_LITE_MODEL = 'llama3.2';
 
-export const DEFAULT_OLLAMA_MODEL_AUTO = 'auto';
+// For compatibility - "auto" now just uses the default model
+export const DEFAULT_OLLAMA_MODEL_AUTO = DEFAULT_OLLAMA_MODEL;
 
 export const DEFAULT_OLLAMA_EMBEDDING_MODEL = 'nomic-embed-text';
 

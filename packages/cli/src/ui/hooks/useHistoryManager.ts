@@ -33,10 +33,12 @@ export function useHistory(): UseHistoryManagerReturn {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const messageIdCounterRef = useRef(0);
 
-  // Generates a unique message ID based on a timestamp and a counter.
-  const getNextMessageId = useCallback((baseTimestamp: number): number => {
+  // Generates a unique message ID that is guaranteed to be unique
+  const getNextMessageId = useCallback((_baseTimestamp: number): number => {
     messageIdCounterRef.current += 1;
-    return baseTimestamp + messageIdCounterRef.current;
+    // Use a simple monotonically increasing counter
+    // baseTimestamp is kept for backward compatibility but not used
+    return messageIdCounterRef.current;
   }, []);
 
   const loadHistory = useCallback((newHistory: HistoryItem[]) => {

@@ -8,7 +8,6 @@ import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import process from 'node:process';
 import { mcpCommand } from '../commands/mcp.js';
-import type { OutputFormat } from '@google/ollama-cli-core';
 import { extensionsCommand } from '../commands/extensions.js';
 import {
   Config,
@@ -30,6 +29,14 @@ import {
   EDIT_TOOL_NAME,
   debugLogger,
   loadServerHierarchicalMemory,
+  selectSmallestOllamaModel,
+  formatModelList,
+  OllamaModelClient,
+  DEFAULT_MODEL_CONFIGS,
+} from '@google/ollama-cli-core';
+import type {
+  OutputFormat,
+  ModelConfigServiceConfig,
 } from '@google/ollama-cli-core';
 import type { Settings } from './settings.js';
 
@@ -554,14 +561,139 @@ export async function loadCliConfig(
   );
 
   const useModelRouter = settings.experimental?.useModelRouter ?? true;
-  const defaultModel = useModelRouter
+  const baseUrl = process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+  
+  // If no model is specified, try to get the smallest available model
+  let defaultModel = useModelRouter
     ? DEFAULT_OLLAMA_MODEL_AUTO
     : DEFAULT_OLLAMA_MODEL;
+  
+  // Check if we need to fetch default model from Ollama
+  if (!argv.model && !process.env['OLLAMA_MODEL'] && !settings.model?.name) {
+    const smallestAvailable = await selectSmallestOllamaModel(baseUrl);
+    if (smallestAvailable) {
+      defaultModel = smallestAvailable;
+      if (debugMode) {
+        debugLogger.debug(
+          `No model specified, auto-selected: ${smallestAvailable}`,
+        );
+      }
+    }
+  }
+  
   const resolvedModel: string =
     argv.model ||
     process.env['OLLAMA_MODEL'] ||
     settings.model?.name ||
     defaultModel;
+
+  // Auto-select smallest model for internal operations if no aliases have models
+  let modelConfigServiceConfig: ModelConfigServiceConfig | undefined =
+    settings.modelConfigs;
+
+  // Only auto-select if no model configs are provided or aliases don't specify models
+  const needsAutoModel =
+    !modelConfigServiceConfig ||
+    (modelConfigServiceConfig.aliases &&
+      Object.values(modelConfigServiceConfig.aliases).some(
+        (alias) => !alias.modelConfig.model && !alias.extends,
+      ));
+
+  if (needsAutoModel) {
+    const smallestModel = await selectSmallestOllamaModel(baseUrl);
+
+    if (!smallestModel) {
+      // No models available - show error message
+      const client = new OllamaModelClient(baseUrl, 5000);
+      let errorMessage = `\nNo Ollama models found!\n\n`;
+
+      try {
+        const models = await client.listModels();
+        if (models.length === 0) {
+          errorMessage += `Please install a model using:\n  ollama pull <model-name>\n\nPopular models:\n  - llama3.2 (small, fast)\n  - qwen2.5-coder (code-focused)\n  - mistral (balanced)\n`;
+        } else {
+          errorMessage += `Available models:\n${formatModelList(models)}\n`;
+        }
+      } catch (error) {
+        errorMessage += `Could not connect to Ollama server at ${baseUrl}\n`;
+        errorMessage += `Please ensure Ollama is running or set OLLAMA_BASE_URL.\n`;
+        if (debugMode) {
+          errorMessage += `\nError: ${error}\n`;
+        }
+      }
+
+      throw new FatalConfigError(errorMessage);
+    }
+
+    // Create model configs with auto-selected model for aliases that need it
+    modelConfigServiceConfig = {
+      ...DEFAULT_MODEL_CONFIGS,
+      ...modelConfigServiceConfig,
+      aliases: {
+        ...DEFAULT_MODEL_CONFIGS.aliases,
+        ...(modelConfigServiceConfig?.aliases || {}),
+        // Update base aliases that don't have a model with the smallest one
+        classifier: {
+          ...DEFAULT_MODEL_CONFIGS.aliases?.['classifier'],
+          modelConfig: {
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['classifier']?.modelConfig,
+            model: smallestModel,
+          },
+        },
+        'prompt-completion': {
+          ...DEFAULT_MODEL_CONFIGS.aliases?.['prompt-completion'],
+          modelConfig: {
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['prompt-completion']
+              ?.modelConfig,
+            model: smallestModel,
+          },
+        },
+        'edit-corrector': {
+          ...DEFAULT_MODEL_CONFIGS.aliases?.['edit-corrector'],
+          modelConfig: {
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['edit-corrector']?.modelConfig,
+            model: smallestModel,
+          },
+        },
+        'summarizer-default': {
+          ...DEFAULT_MODEL_CONFIGS.aliases?.['summarizer-default'],
+          modelConfig: {
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['summarizer-default']
+              ?.modelConfig,
+            model: smallestModel,
+          },
+        },
+        'summarizer-shell': {
+          ...DEFAULT_MODEL_CONFIGS.aliases?.['summarizer-shell'],
+          modelConfig: {
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['summarizer-shell']
+              ?.modelConfig,
+            model: smallestModel,
+          },
+        },
+        'web-search': {
+          ...DEFAULT_MODEL_CONFIGS.aliases?.['web-search'],
+          modelConfig: {
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['web-search']?.modelConfig,
+            model: smallestModel,
+          },
+        },
+        'web-fetch': {
+          ...DEFAULT_MODEL_CONFIGS.aliases?.['web-fetch'],
+          modelConfig: {
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['web-fetch']?.modelConfig,
+            model: smallestModel,
+          },
+        },
+      },
+    };
+
+    if (debugMode) {
+      debugLogger.debug(
+        `Auto-selected model "${smallestModel}" for internal operations`,
+      );
+    }
+  }
 
   const sandboxConfig = await loadSandboxConfig(settings, argv);
   const screenReader =
@@ -654,7 +786,7 @@ export async function loadCliConfig(
     recordResponses: argv.recordResponses,
     retryFetchErrors: settings.general?.retryFetchErrors ?? false,
     ptyInfo: ptyInfo?.name,
-    modelConfigServiceConfig: settings.modelConfigs,
+    modelConfigServiceConfig,
     // TODO: loading of hooks based on workspace trust
     enableHooks: settings.tools?.enableHooks ?? false,
     hooks: settings.hooks || {},

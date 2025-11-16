@@ -38,6 +38,7 @@ export * from './fallback/types.js';
 
 // Export Ollama client
 export * from './ollama/client.js';
+export * from './ollama/modelAutoSelect.js';
 
 export * from './code_assist/codeAssist.js';
 export * from './code_assist/oauth2.js';
@@ -82,6 +83,7 @@ export * from './services/fileDiscoveryService.js';
 export * from './services/gitService.js';
 export * from './services/chatRecordingService.js';
 export * from './services/fileSystemService.js';
+export * from './services/modelConfigService.js';
 
 // Export IDE specific logic
 export * from './ide/ide-client.js';

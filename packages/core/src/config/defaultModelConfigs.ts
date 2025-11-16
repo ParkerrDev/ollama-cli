@@ -33,40 +33,10 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
         },
       },
     },
-    // Because `ollama-2.5-pro` and related model configs are "user-facing"
-    // today, i.e. they could be passed via `--model`, we have to be careful to
-    // ensure these model configs can be used interactively.
-    // TODO(joshualitt): Introduce internal base configs for the various models,
-    // note: we will have to think carefully about names.
-    'ollama-2.5-pro': {
-      extends: 'chat-base',
-      modelConfig: {
-        model: 'ollama-2.5-pro',
-      },
-    },
-    'ollama-2.5-flash': {
-      extends: 'chat-base',
-      modelConfig: {
-        model: 'ollama-2.5-flash',
-      },
-    },
-    'ollama-2.5-flash-lite': {
-      extends: 'chat-base',
-      modelConfig: {
-        model: 'ollama-2.5-flash-lite',
-      },
-    },
-    // Bases for the internal model configs.
-    'ollama-2.5-flash-base': {
-      extends: 'base',
-      modelConfig: {
-        model: 'ollama-2.5-flash',
-      },
-    },
+    // Internal configs use the user's selected model
     classifier: {
       extends: 'base',
       modelConfig: {
-        model: 'ollama-2.5-flash-lite',
         generateContentConfig: {
           maxOutputTokens: 1024,
           thinkingConfig: {
@@ -78,7 +48,6 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     'prompt-completion': {
       extends: 'base',
       modelConfig: {
-        model: 'ollama-2.5-flash-lite',
         generateContentConfig: {
           temperature: 0.3,
           maxOutputTokens: 16000,
@@ -91,7 +60,6 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     'edit-corrector': {
       extends: 'base',
       modelConfig: {
-        model: 'ollama-2.5-flash-lite',
         generateContentConfig: {
           thinkingConfig: {
             thinkingBudget: 0,
@@ -102,7 +70,6 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     'summarizer-default': {
       extends: 'base',
       modelConfig: {
-        model: 'ollama-2.5-flash-lite',
         generateContentConfig: {
           maxOutputTokens: 2000,
         },
@@ -111,14 +78,13 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     'summarizer-shell': {
       extends: 'base',
       modelConfig: {
-        model: 'ollama-2.5-flash-lite',
         generateContentConfig: {
           maxOutputTokens: 2000,
         },
       },
     },
     'web-search': {
-      extends: 'ollama-2.5-flash-base',
+      extends: 'base',
       modelConfig: {
         generateContentConfig: {
           tools: [{ googleSearch: {} }],
@@ -126,34 +92,31 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
       },
     },
     'web-fetch': {
-      extends: 'ollama-2.5-flash-base',
+      extends: 'base',
       modelConfig: {
         generateContentConfig: {
           tools: [{ urlContext: {} }],
         },
       },
     },
-    // TODO(joshualitt): During cleanup, make modelConfig optional.
     'web-fetch-fallback': {
-      extends: 'ollama-2.5-flash-base',
+      extends: 'base',
       modelConfig: {},
     },
     'loop-detection': {
-      extends: 'ollama-2.5-flash-base',
+      extends: 'base',
       modelConfig: {},
     },
     'loop-detection-double-check': {
       extends: 'base',
-      modelConfig: {
-        model: 'ollama-2.5-pro',
-      },
+      modelConfig: {},
     },
     'llm-edit-fixer': {
-      extends: 'ollama-2.5-flash-base',
+      extends: 'base',
       modelConfig: {},
     },
     'next-speaker-checker': {
-      extends: 'ollama-2.5-flash-base',
+      extends: 'base',
       modelConfig: {},
     },
   },

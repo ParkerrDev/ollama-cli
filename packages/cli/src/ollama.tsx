@@ -628,3 +628,6 @@ function setWindowTitle(title: string, settings: LoadedSettings) {
     });
   }
 }
+
+// Start the application
+main();

@@ -13,6 +13,7 @@ import type {
   EmbedContentParameters,
 } from '@google/genai';
 import type { ContentGenerator, ContentGeneratorConfig } from '../core/contentGenerator.js';
+import { OllamaToolCallParser } from './ollamaToolCallParser.js';
 
 interface OllamaMessage {
   role: string;
@@ -23,6 +24,14 @@ interface OllamaRequest {
   model: string;
   messages: OllamaMessage[];
   stream?: boolean;
+  tools?: Array<{
+    type: 'function';
+    function: {
+      name: string;
+      description?: string;
+      parameters?: any;
+    };
+  }>;
   options?: {
     temperature?: number;
     num_predict?: number;
@@ -35,6 +44,12 @@ interface OllamaResponse {
   message: {
     role: string;
     content: string;
+    tool_calls?: Array<{
+      function: {
+        name: string;
+        arguments: string | Record<string, unknown>;
+      };
+    }>;
   };
   done: boolean;
   done_reason?: string;
@@ -46,20 +61,96 @@ interface OllamaResponse {
   eval_duration?: number;
 }
 
+interface OllamaModelInfo {
+  capabilities?: string[];
+}
+
 export class OllamaContentGenerator implements ContentGenerator {
-  constructor(protected config: ContentGeneratorConfig) {}
+  private toolCallParser: OllamaToolCallParser;
+  private modelCapabilities: Map<string, OllamaModelInfo> = new Map();
+
+  constructor(protected config: ContentGeneratorConfig) {
+    this.toolCallParser = new OllamaToolCallParser();
+  }
+  
+  /**
+   * Check if a model supports native tool calling
+   */
+  private async getModelCapabilities(model: string): Promise<OllamaModelInfo> {
+    // Check cache first
+    if (this.modelCapabilities.has(model)) {
+      return this.modelCapabilities.get(model)!;
+    }
+    
+    try {
+      const response = await fetch(`${this.config.baseUrl}/api/show`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: model }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const info: OllamaModelInfo = {
+          capabilities: data.capabilities || [],
+        };
+        this.modelCapabilities.set(model, info);
+        return info;
+      }
+    } catch (error) {
+      // If we can't get model info, assume no native tools
+      console.warn(`Could not fetch capabilities for model ${model}:`, error);
+    }
+    
+    // Default: assume no native tools
+    const defaultInfo: OllamaModelInfo = { capabilities: [] };
+    this.modelCapabilities.set(model, defaultInfo);
+    return defaultInfo;
+  }
+  
+  /**
+   * Check if model supports native tool calling
+   */
+  private async supportsNativeTools(model: string): Promise<boolean> {
+    const info = await this.getModelCapabilities(model);
+    return info.capabilities?.includes('tools') ?? false;
+  }
 
   /**
    * Converts Gemini-style request to Ollama format
    */
-  protected convertToOllamaFormat(request: any): OllamaRequest {
+  protected async convertToOllamaFormat(request: any): Promise<OllamaRequest> {
     const messages: OllamaMessage[] = [];
+    const modelName = request.model || this.config.model || 'llama3.2';
+    
+    // Check if model supports native tools
+    const hasNativeTools = await this.supportsNativeTools(modelName);
+    const hasTools = request.tools && Array.isArray(request.tools) && request.tools.length > 0;
+    
+    // Build tool schemas if tools are provided and model doesn't support native tools
+    let toolSchemas = '';
+    if (hasTools && !hasNativeTools) {
+      toolSchemas = this.buildToolSchemas(request.tools);
+    }
 
     // Convert system instruction
     if (request.systemInstruction) {
+      let systemContent = this.partsToText(request.systemInstruction.parts || []);
+      
+      // Append tool schemas to system instruction only if not using native tools
+      if (toolSchemas) {
+        systemContent += '\n\n' + toolSchemas;
+      }
+      
       messages.push({
         role: 'system',
-        content: this.partsToText(request.systemInstruction.parts || []),
+        content: systemContent,
+      });
+    } else if (toolSchemas) {
+      // If no system instruction but we have tools, add them as system message
+      messages.push({
+        role: 'system',
+        content: toolSchemas,
       });
     }
 
@@ -75,9 +166,14 @@ export class OllamaContentGenerator implements ContentGenerator {
     }
 
     const ollamaRequest: OllamaRequest = {
-      model: request.model || this.config.model || 'llama3.2',
+      model: modelName,
       messages,
     };
+
+    // Add native tools if supported
+    if (hasNativeTools && hasTools) {
+      ollamaRequest.tools = this.convertToNativeTools(request.tools);
+    }
 
     // Add options if specified
     if (request.generationConfig) {
@@ -91,6 +187,72 @@ export class OllamaContentGenerator implements ContentGenerator {
     }
 
     return ollamaRequest;
+  }
+  
+  /**
+   * Convert Gemini tools to Ollama native tool format
+   */
+  protected convertToNativeTools(tools: any[]): Array<{
+    type: 'function';
+    function: {
+      name: string;
+      description?: string;
+      parameters?: any;
+    };
+  }> {
+    const nativeTools: Array<{
+      type: 'function';
+      function: {
+        name: string;
+        description?: string;
+        parameters?: any;
+      };
+    }> = [];
+    
+    for (const tool of tools) {
+      if (tool.functionDeclarations) {
+        for (const func of tool.functionDeclarations) {
+          nativeTools.push({
+            type: 'function',
+            function: {
+              name: func.name,
+              description: func.description,
+              parameters: func.parameters,
+            },
+          });
+        }
+      }
+    }
+    
+    return nativeTools;
+  }
+  
+  /**
+   * Build tool schemas for Ollama prompt injection
+   */
+  protected buildToolSchemas(tools: any[]): string {
+    let schemas = 'AVAILABLE TOOLS:\n\n';
+    schemas += 'You have access to the following tools. To use a tool, output it in JSON format:\n';
+    schemas += '{"tool": "tool_name", "args": {"param1": "value1", "param2": "value2"}}\n\n';
+    
+    for (const tool of tools) {
+      if (tool.functionDeclarations) {
+        for (const func of tool.functionDeclarations) {
+          schemas += `Tool: ${func.name}\n`;
+          if (func.description) {
+            schemas += `Description: ${func.description}\n`;
+          }
+          if (func.parameters) {
+            schemas += `Parameters: ${JSON.stringify(func.parameters, null, 2)}\n`;
+          }
+          schemas += '\n';
+        }
+      }
+    }
+    
+    schemas += 'IMPORTANT: When you want to use a tool, output the exact JSON format shown above. The tool call will be executed and you will receive the result.';
+    
+    return schemas;
   }
 
   /**
@@ -117,12 +279,39 @@ export class OllamaContentGenerator implements ContentGenerator {
    * Converts Ollama response to Gemini format
    */
   protected convertFromOllamaFormat(ollamaResponse: OllamaResponse): any {
+    const content = ollamaResponse.message.content;
+    
+    // Check for native tool calls first
+    let functionCalls: any[] = [];
+    if (ollamaResponse.message.tool_calls && ollamaResponse.message.tool_calls.length > 0) {
+      // Model used native tool calling
+      functionCalls = ollamaResponse.message.tool_calls.map(tc => {
+        // Parse arguments if they're a JSON string
+        let args = tc.function.arguments;
+        if (typeof args === 'string') {
+          try {
+            args = JSON.parse(args);
+          } catch (e) {
+            console.error('Failed to parse tool call arguments:', args);
+            args = {};
+          }
+        }
+        return {
+          name: tc.function.name,
+          args,
+        };
+      });
+    } else {
+      // Fall back to parsing tool calls from text
+      functionCalls = this.toolCallParser.parseToolCalls(content);
+    }
+    
     return {
       candidates: [
         {
           content: {
             role: 'model',
-            parts: [{ text: ollamaResponse.message.content }],
+            parts: [{ text: content }],
           },
           finishReason: ollamaResponse.done_reason || undefined,
         },
@@ -134,9 +323,9 @@ export class OllamaContentGenerator implements ContentGenerator {
             totalTokenCount: (ollamaResponse.prompt_eval_count || 0) + (ollamaResponse.eval_count || 0),
           }
         : undefined,
-      text: ollamaResponse.message.content,
+      text: content,
       data: {},
-      functionCalls: [],
+      functionCalls,
       executableCode: [],
       codeExecutionResult: [],
     };
@@ -146,7 +335,7 @@ export class OllamaContentGenerator implements ContentGenerator {
     request: GenerateContentParameters,
     userPromptId: string,
   ): Promise<GenerateContentResponse> {
-    const ollamaRequest = this.convertToOllamaFormat(request);
+    const ollamaRequest = await this.convertToOllamaFormat(request);
     const endpoint = `${this.config.baseUrl}/api/chat`;
 
     try {
@@ -185,7 +374,7 @@ export class OllamaContentGenerator implements ContentGenerator {
     request: GenerateContentParameters,
     userPromptId: string,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
-    const ollamaRequest = this.convertToOllamaFormat(request);
+    const ollamaRequest = await this.convertToOllamaFormat(request);
     const endpoint = `${this.config.baseUrl}/api/chat`;
 
     try {
@@ -195,22 +384,37 @@ export class OllamaContentGenerator implements ContentGenerator {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ ...ollamaRequest, stream: true }),
-        signal: this.config.timeout ? AbortSignal.timeout(this.config.timeout) : undefined,
+        // Don't use timeout for streaming - it should stream indefinitely
+        // The timeout only applies to the initial connection
+        signal: undefined,
       });
 
       if (!response.ok) {
         const errorMsg = await response.text();
-        throw new Error(`Ollama API Streaming Error: ${response.status} - ${errorMsg}`);
+        let parsedError;
+        try {
+          parsedError = JSON.parse(errorMsg);
+        } catch {
+          parsedError = { error: errorMsg };
+        }
+        
+        const modelInfo = ollamaRequest.model ? ` (model: ${ollamaRequest.model})` : '';
+        throw new Error(
+          `Ollama API Streaming Error${modelInfo}: ${response.status} - ${parsedError.error || errorMsg}`
+        );
       }
 
       if (!response.body) {
         throw new Error('Streaming response body is empty!');
       }
 
+      const self = this;
+      
       async function* generator(): AsyncGenerator<GenerateContentResponse> {
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let accumulatedText = '';
 
         try {
           while (true) {
@@ -228,6 +432,62 @@ export class OllamaContentGenerator implements ContentGenerator {
               try {
                 const parsed: OllamaResponse = JSON.parse(trimmed);
                 
+                // Check for error response from Ollama
+                if ('error' in parsed) {
+                  const errorMsg = (parsed as any).error;
+                  const modelInfo = ollamaRequest.model ? ` (model: ${ollamaRequest.model})` : '';
+                  
+                  // Provide helpful error messages for common issues
+                  if (errorMsg.includes('unexpected EOF') || errorMsg.includes('model not found')) {
+                    throw new Error(
+                      `Ollama model error${modelInfo}: ${errorMsg}\n\n` +
+                      `This usually means:\n` +
+                      `1. The model may be corrupted or incomplete\n` +
+                      `2. The model hasn't been fully downloaded\n` +
+                      `\nTry:\n` +
+                      `  ollama pull ${ollamaRequest.model}\n` +
+                      `  ollama list  # to see available models`
+                    );
+                  }
+                  
+                  throw new Error(`Ollama error${modelInfo}: ${errorMsg}`);
+                }
+                
+                // Check if message exists
+                if (!parsed.message) {
+                  console.error('Invalid Ollama response (no message):', trimmed);
+                  continue;
+                }
+                
+                // Accumulate text for tool call parsing
+                accumulatedText += parsed.message.content;
+                
+                // Parse tool calls when done
+                let functionCalls: any[] = [];
+                if (parsed.done) {
+                  // Check for native tool calls first
+                  if (parsed.message.tool_calls && parsed.message.tool_calls.length > 0) {
+                    functionCalls = parsed.message.tool_calls.map(tc => {
+                      let args = tc.function.arguments;
+                      if (typeof args === 'string') {
+                        try {
+                          args = JSON.parse(args);
+                        } catch (e) {
+                          console.error('Failed to parse tool call arguments:', args);
+                          args = {};
+                        }
+                      }
+                      return {
+                        name: tc.function.name,
+                        args,
+                      };
+                    });
+                  } else {
+                    // Fall back to parsing from accumulated text
+                    functionCalls = self.toolCallParser.parseToolCalls(accumulatedText);
+                  }
+                }
+                
                 // Yield each chunk
                 yield {
                   candidates: [
@@ -241,7 +501,7 @@ export class OllamaContentGenerator implements ContentGenerator {
                   ],
                   text: parsed.message.content,
                   data: {},
-                  functionCalls: [],
+                  functionCalls,
                   executableCode: [],
                   codeExecutionResult: [],
                 } as any;
@@ -250,6 +510,10 @@ export class OllamaContentGenerator implements ContentGenerator {
                   return;
                 }
               } catch (e) {
+                // If it's an error we threw, re-throw it
+                if (e instanceof Error && e.message.startsWith('Ollama error:')) {
+                  throw e;
+                }
                 // Skip invalid JSON chunks
                 console.error('Failed to parse Ollama response:', trimmed, e);
               }

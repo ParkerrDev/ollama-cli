@@ -8,10 +8,6 @@ import type React from 'react';
 import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import {
-  DEFAULT_OLLAMA_FLASH_LITE_MODEL,
-  DEFAULT_OLLAMA_FLASH_MODEL,
-  DEFAULT_OLLAMA_MODEL,
-  DEFAULT_OLLAMA_MODEL_AUTO,
   ModelSlashCommandEvent,
   logModelSlashCommand,
   OllamaModelClient,
@@ -21,6 +17,8 @@ import { useKeypress } from '../hooks/useKeypress.js';
 import { theme } from '../semantic-colors.js';
 import { DescriptiveRadioButtonSelect } from './shared/DescriptiveRadioButtonSelect.js';
 import { ConfigContext } from '../contexts/ConfigContext.js';
+import { useSettings } from '../contexts/SettingsContext.js';
+import { SettingScope } from '../../config/settings.js';
 
 interface ModelDialogProps {
   onClose: () => void;
@@ -44,35 +42,11 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 }
 
-const DEFAULT_MODEL_OPTIONS: ModelOption[] = [
-  {
-    value: DEFAULT_OLLAMA_MODEL_AUTO,
-    title: 'Auto (recommended)',
-    description: 'Let the system choose the best model for your task',
-    key: 'default-auto',
-  },
-  {
-    value: DEFAULT_OLLAMA_MODEL,
-    title: 'Pro',
-    description: 'For complex tasks that require deep reasoning and creativity',
-    key: 'default-pro',
-  },
-  {
-    value: DEFAULT_OLLAMA_FLASH_MODEL,
-    title: 'Flash',
-    description: 'For tasks that need a balance of speed and reasoning',
-    key: 'default-flash',
-  },
-  {
-    value: DEFAULT_OLLAMA_FLASH_LITE_MODEL,
-    title: 'Flash-Lite',
-    description: 'For simple tasks that need to be done quickly',
-    key: 'default-flash-lite',
-  },
-];
+const DEFAULT_MODEL_OPTIONS: ModelOption[] = [];
 
 export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
   const config = useContext(ConfigContext);
+  const settings = useSettings();
   const [modelOptions, setModelOptions] = useState<ModelOption[]>(DEFAULT_MODEL_OPTIONS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,9 +75,8 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
         setLoading(false);
       } catch (err) {
         console.error('Failed to fetch Ollama models:', err);
-        setError('Could not connect to Ollama server. Using default models.');
+        setError('Could not connect to Ollama server. Please ensure Ollama is running.');
         setLoading(false);
-        // Keep using DEFAULT_MODEL_OPTIONS as fallback
       }
     };
 
@@ -111,7 +84,7 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
   }, []);
 
   // Determine the Preferred Model (read once when the dialog opens).
-  const preferredModel = config?.getModel() || DEFAULT_OLLAMA_MODEL_AUTO;
+  const preferredModel = config?.getModel() || '';
 
   useKeypress(
     (key) => {
@@ -133,12 +106,14 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
     (model: string) => {
       if (config) {
         config.setModel(model);
+        // Persist the model selection to user settings
+        settings.setValue(SettingScope.User, 'model.name', model);
         const event = new ModelSlashCommandEvent(model);
         logModelSlashCommand(config, event);
       }
       onClose();
     },
-    [config, onClose],
+    [config, settings, onClose],
   );
 
   return (
