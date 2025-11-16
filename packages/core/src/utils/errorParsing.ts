@@ -9,10 +9,9 @@ import { DEFAULT_OLLAMA_FLASH_MODEL } from '../config/models.js';
 import type { UserTierId } from '../code_assist/types.js';
 import { AuthType } from '../core/contentGenerator.js';
 
-const RATE_LIMIT_ERROR_MESSAGE_USE_OLLAMA =
-  '\nPlease wait and try again later. To increase your limits, request a quota increase through AI Studio, or switch to another /auth method';
-const RATE_LIMIT_ERROR_MESSAGE_VERTEX =
-  '\nPlease wait and try again later. To increase your limits, request a quota increase through Vertex, or switch to another /auth method';
+const RATE_LIMIT_ERROR_MESSAGE_OLLAMA =
+  '\nPlease wait and try again later. Check your Ollama server status or try a different model.';
+
 const getRateLimitErrorMessageDefault = (
   fallbackModel: string = DEFAULT_OLLAMA_FLASH_MODEL,
 ) =>
@@ -22,14 +21,11 @@ function getRateLimitMessage(
   authType?: AuthType,
   fallbackModel?: string,
 ): string {
-  switch (authType) {
-    case AuthType.USE_OLLAMA:
-      return RATE_LIMIT_ERROR_MESSAGE_USE_OLLAMA;
-    case AuthType.USE_VERTEX_AI:
-      return RATE_LIMIT_ERROR_MESSAGE_VERTEX;
-    default:
-      return getRateLimitErrorMessageDefault(fallbackModel);
+  // For Ollama server, provide appropriate message
+  if (authType === AuthType.USE_OLLAMA_SERVER) {
+    return RATE_LIMIT_ERROR_MESSAGE_OLLAMA;
   }
+  return getRateLimitErrorMessageDefault(fallbackModel);
 }
 
 export function parseAndFormatApiError(

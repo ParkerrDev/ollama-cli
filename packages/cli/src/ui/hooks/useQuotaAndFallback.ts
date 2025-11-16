@@ -46,7 +46,7 @@ export function useQuotaAndFallback({
       const contentGeneratorConfig = config.getContentGeneratorConfig();
       if (
         !contentGeneratorConfig ||
-        contentGeneratorConfig.authType !== AuthType.LOGIN_WITH_GOOGLE
+        contentGeneratorConfig.authType !== AuthType.USE_OLLAMA_SERVER
       ) {
         return null;
       }

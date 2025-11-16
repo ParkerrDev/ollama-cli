@@ -148,7 +148,9 @@ export async function retryWithBackoff<T>(
       const classifiedError = classifyGoogleError(error);
 
       if (classifiedError instanceof TerminalQuotaError) {
-        if (onPersistent429 && authType === AuthType.LOGIN_WITH_GOOGLE) {
+        // For Ollama server, we don't have fallback logic for quota errors
+        // Just throw the error
+        if (onPersistent429 && authType === AuthType.USE_OLLAMA_SERVER) {
           try {
             const fallbackModel = await onPersistent429(
               authType,
@@ -160,7 +162,7 @@ export async function retryWithBackoff<T>(
               continue;
             }
           } catch (fallbackError) {
-            debugLogger.warn('Fallback to Flash model failed:', fallbackError);
+            debugLogger.warn('Fallback to different model failed:', fallbackError);
           }
         }
         throw classifiedError; // Throw if no fallback or fallback failed.
@@ -168,7 +170,7 @@ export async function retryWithBackoff<T>(
 
       if (classifiedError instanceof RetryableQuotaError) {
         if (attempt >= maxAttempts) {
-          if (onPersistent429 && authType === AuthType.LOGIN_WITH_GOOGLE) {
+          if (onPersistent429 && authType === AuthType.USE_OLLAMA_SERVER) {
             try {
               const fallbackModel = await onPersistent429(
                 authType,

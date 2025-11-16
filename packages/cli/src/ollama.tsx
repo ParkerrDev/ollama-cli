@@ -287,7 +287,7 @@ export async function main() {
   // Set a default auth type if one isn't set or is set to a legacy type
   if (
     !settings.merged.security?.auth?.selectedType ||
-    settings.merged.security?.auth?.selectedType === AuthType.LEGACY_CLOUD_SHELL
+    settings.merged.security?.auth?.selectedType === AuthType.USE_OLLAMA_SERVER
   ) {
     if (
       process.env['CLOUD_SHELL'] === 'true' ||
@@ -296,7 +296,7 @@ export async function main() {
       settings.setValue(
         SettingScope.User,
         'selectedAuthType',
-        AuthType.COMPUTE_ADC,
+        AuthType.USE_OLLAMA_SERVER,
       );
     }
   }
@@ -458,7 +458,7 @@ export async function main() {
 
     if (
       settings.merged.security?.auth?.selectedType ===
-        AuthType.LOGIN_WITH_GOOGLE &&
+        AuthType.USE_OLLAMA_SERVER &&
       config.isBrowserLaunchSuppressed()
     ) {
       // Do oauth before app renders to make copying the link possible.

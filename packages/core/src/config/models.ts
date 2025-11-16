@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export const DEFAULT_OLLAMA_MODEL = 'ollama-2.5-pro';
-export const DEFAULT_OLLAMA_FLASH_MODEL = 'ollama-2.5-flash';
-export const DEFAULT_OLLAMA_FLASH_LITE_MODEL = 'ollama-2.5-flash-lite';
+// Default Ollama models - these should match models available in your Ollama instance
+export const DEFAULT_OLLAMA_MODEL = 'qwen2.5-coder:latest';
+export const DEFAULT_OLLAMA_FLASH_MODEL = 'llama3.2:latest';
+export const DEFAULT_OLLAMA_FLASH_LITE_MODEL = 'llama3.2:1b';
 
 export const DEFAULT_OLLAMA_MODEL_AUTO = 'auto';
 
-export const DEFAULT_OLLAMA_EMBEDDING_MODEL = 'ollama-embedding-001';
+export const DEFAULT_OLLAMA_EMBEDDING_MODEL = 'nomic-embed-text';
 
 // Cap the thinking at 8192 to prevent run-away thinking loops.
 export const DEFAULT_THINKING_MODE = 8192;
@@ -20,8 +21,8 @@ export const DEFAULT_THINKING_MODE = 8192;
  *
  * When fallback mode is active, this function enforces the use of the standard
  * fallback model. However, it makes an exception for "lite" models (any model
- * with "lite" in its name), allowing them to be used to preserve cost savings.
- * This ensures that "pro" models are always downgraded, while "lite" model
+ * with "lite" or "1b" in its name), allowing them to be used to preserve cost savings.
+ * This ensures that larger models are always downgraded, while lite model
  * requests are honored.
  *
  * @param isInFallbackMode Whether the application is in fallback mode.
@@ -37,9 +38,9 @@ export function getEffectiveModel(
     return requestedModel;
   }
 
-  // If a "lite" model is requested, honor it. This allows for variations of
+  // If a "lite" or small model is requested, honor it. This allows for variations of
   // lite models without needing to list them all as constants.
-  if (requestedModel.includes('lite')) {
+  if (requestedModel.includes('lite') || requestedModel.includes('1b') || requestedModel.includes('3b')) {
     return requestedModel;
   }
 

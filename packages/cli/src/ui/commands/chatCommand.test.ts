@@ -67,7 +67,7 @@ describe('chatCommand', () => {
             getProjectTempDir: () => '/project/root/.ollama/tmp/mockhash',
           },
           getContentGeneratorConfig: () => ({
-            authType: AuthType.LOGIN_WITH_GOOGLE,
+            authType: AuthType.USE_OLLAMA_SERVER,
           }),
         },
         logger: {
@@ -219,7 +219,7 @@ describe('chatCommand', () => {
 
       expect(mockCheckpointExists).not.toHaveBeenCalled(); // Should skip existence check
       expect(mockSaveCheckpoint).toHaveBeenCalledWith(
-        { history, authType: AuthType.LOGIN_WITH_GOOGLE },
+        { history, authType: AuthType.USE_OLLAMA_SERVER },
         tag,
       );
       expect(result).toEqual({
@@ -268,7 +268,7 @@ describe('chatCommand', () => {
       ];
       mockLoadCheckpoint.mockResolvedValue({
         history: conversation,
-        authType: AuthType.LOGIN_WITH_GOOGLE,
+        authType: AuthType.USE_OLLAMA_SERVER,
       });
 
       const result = await resumeCommand?.action?.(mockContext, goodTag);
@@ -290,7 +290,7 @@ describe('chatCommand', () => {
       ];
       mockLoadCheckpoint.mockResolvedValue({
         history: conversation,
-        authType: AuthType.USE_OLLAMA,
+        authType: AuthType.USE_OLLAMA_SERVER,
       });
 
       const result = await resumeCommand?.action?.(mockContext, goodTag);
@@ -298,7 +298,7 @@ describe('chatCommand', () => {
       expect(result).toEqual({
         type: 'message',
         messageType: 'error',
-        content: `Cannot resume chat. It was saved with a different authentication method (${AuthType.USE_OLLAMA}) than the current one (${AuthType.LOGIN_WITH_GOOGLE}).`,
+        content: `Cannot resume chat. It was saved with a different authentication method (${AuthType.USE_OLLAMA_SERVER}) than the current one (${AuthType.USE_OLLAMA_SERVER}).`,
       });
     });
 

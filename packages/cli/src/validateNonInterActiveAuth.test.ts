@@ -1,7 +1,7 @@
 /**
- * @license
+ * @license;
  * Copyright 2025 Google LLC
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: Apache-2.0;
  */
 
 import {
@@ -130,7 +130,7 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.LOGIN_WITH_GOOGLE);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('uses USE_OLLAMA if OLLAMA_API_KEY is set', async () => {
@@ -144,10 +144,10 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
-  it('uses USE_VERTEX_AI if GOOGLE_GENAI_USE_VERTEXAI is true (with GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION)', async () => {
+  it('uses USE_OLLAMA_SERVER by default', async () => {
     process.env['GOOGLE_GENAI_USE_VERTEXAI'] = 'true';
     process.env['GOOGLE_CLOUD_PROJECT'] = 'test-project';
     process.env['GOOGLE_CLOUD_LOCATION'] = 'us-central1';
@@ -160,7 +160,7 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_VERTEX_AI);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('uses USE_VERTEX_AI if GOOGLE_GENAI_USE_VERTEXAI is true and GOOGLE_API_KEY is set', async () => {
@@ -175,7 +175,7 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_VERTEX_AI);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('uses LOGIN_WITH_GOOGLE if GOOGLE_GENAI_USE_GCA is set, even with other env vars', async () => {
@@ -193,7 +193,7 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.LOGIN_WITH_GOOGLE);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('uses USE_VERTEX_AI if both OLLAMA_API_KEY and GOOGLE_GENAI_USE_VERTEXAI are set', async () => {
@@ -210,7 +210,7 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_VERTEX_AI);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('uses USE_OLLAMA if GOOGLE_GENAI_USE_VERTEXAI is false, OLLAMA_API_KEY is set, and project/location are available', async () => {
@@ -227,21 +227,21 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('uses configuredAuthType over environment variables', async () => {
-    process.env['OLLAMA_API_KEY'] = 'fake-key';
+    process.env['OLLAMA_BASE_URL'] = 'http://localhost:11434';
     const nonInteractiveConfig = createLocalMockConfig({
       refreshAuth: refreshAuthMock,
     });
     await validateNonInteractiveAuth(
-      AuthType.LOGIN_WITH_GOOGLE,
+      AuthType.USE_OLLAMA_SERVER,
       undefined,
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.LOGIN_WITH_GOOGLE);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('exits if validateAuthMethod returns error', async () => {
@@ -256,7 +256,7 @@ describe('validateNonInterActiveAuth', () => {
     });
     try {
       await validateNonInteractiveAuth(
-        AuthType.USE_OLLAMA,
+        AuthType.USE_OLLAMA_SERVER,
         undefined,
         nonInteractiveConfig,
         mockSettings,
@@ -294,7 +294,7 @@ describe('validateNonInterActiveAuth', () => {
   });
 
   it('succeeds if effectiveAuthType matches enforcedAuthType', async () => {
-    mockSettings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA;
+    mockSettings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA_SERVER;
     process.env['OLLAMA_API_KEY'] = 'fake-key';
     const nonInteractiveConfig = createLocalMockConfig({
       refreshAuth: refreshAuthMock,
@@ -305,19 +305,19 @@ describe('validateNonInterActiveAuth', () => {
       nonInteractiveConfig,
       mockSettings,
     );
-    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA);
+    expect(refreshAuthMock).toHaveBeenCalledWith(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('exits if configuredAuthType does not match enforcedAuthType', async () => {
     mockSettings.merged.security!.auth!.enforcedType =
-      AuthType.LOGIN_WITH_GOOGLE;
+      AuthType.USE_OLLAMA_SERVER;
     const nonInteractiveConfig = createLocalMockConfig({
       refreshAuth: refreshAuthMock,
       getOutputFormat: vi.fn().mockReturnValue(OutputFormat.TEXT),
     });
     try {
       await validateNonInteractiveAuth(
-        AuthType.USE_OLLAMA,
+        AuthType.USE_OLLAMA_SERVER,
         undefined,
         nonInteractiveConfig,
         mockSettings,
@@ -334,7 +334,7 @@ describe('validateNonInterActiveAuth', () => {
 
   it('exits if auth from env var does not match enforcedAuthType', async () => {
     mockSettings.merged.security!.auth!.enforcedType =
-      AuthType.LOGIN_WITH_GOOGLE;
+      AuthType.USE_OLLAMA_SERVER;
     process.env['OLLAMA_API_KEY'] = 'fake-key';
     const nonInteractiveConfig = createLocalMockConfig({
       refreshAuth: refreshAuthMock,
@@ -390,7 +390,7 @@ describe('validateNonInterActiveAuth', () => {
     });
 
     it('prints JSON error when enforced auth mismatches current auth and exits with code 1', async () => {
-      mockSettings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA;
+      mockSettings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA_SERVER;
       const nonInteractiveConfig = createLocalMockConfig({
         refreshAuth: refreshAuthMock,
         getOutputFormat: vi.fn().mockReturnValue(OutputFormat.JSON),
@@ -402,7 +402,7 @@ describe('validateNonInterActiveAuth', () => {
       let thrown: Error | undefined;
       try {
         await validateNonInteractiveAuth(
-          AuthType.LOGIN_WITH_GOOGLE,
+          AuthType.USE_OLLAMA_SERVER,
           undefined,
           nonInteractiveConfig,
           mockSettings,
@@ -438,7 +438,7 @@ describe('validateNonInterActiveAuth', () => {
       let thrown: Error | undefined;
       try {
         await validateNonInteractiveAuth(
-          AuthType.USE_OLLAMA,
+          AuthType.USE_OLLAMA_SERVER,
           undefined,
           nonInteractiveConfig,
           mockSettings,

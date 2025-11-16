@@ -41,7 +41,7 @@ describe('parseAndFormatApiError', () => {
   it('should format a 429 API error with the vertex message', () => {
     const errorMessage =
       'got status: 429 Too Many Requests. {"error":{"code":429,"message":"Rate limit exceeded","status":"RESOURCE_EXHAUSTED"}}';
-    const result = parseAndFormatApiError(errorMessage, AuthType.USE_VERTEX_AI);
+    const result = parseAndFormatApiError(errorMessage, AuthType.USE_OLLAMA_SERVER);
     expect(result).toContain('[API Error: Rate limit exceeded');
     expect(result).toContain(vertexMessage);
   });
@@ -85,7 +85,7 @@ describe('parseAndFormatApiError', () => {
       },
     });
 
-    const result = parseAndFormatApiError(errorMessage, AuthType.USE_OLLAMA);
+    const result = parseAndFormatApiError(errorMessage, AuthType.USE_OLLAMA_SERVER);
     expect(result).toContain('Ollama 2.5 Pro Preview');
     expect(result).toContain(OllamaMessage);
   });
@@ -104,7 +104,7 @@ describe('parseAndFormatApiError', () => {
       message: 'Rate limit exceeded',
       status: 429,
     };
-    const result = parseAndFormatApiError(error, AuthType.USE_VERTEX_AI);
+    const result = parseAndFormatApiError(error, AuthType.USE_OLLAMA_SERVER);
     expect(result).toContain('[API Error: Rate limit exceeded]');
     expect(result).toContain(vertexMessage);
   });

@@ -97,20 +97,9 @@ class OllamaAgent {
     this.clientCapabilities = args.clientCapabilities;
     const authMethods = [
       {
-        id: AuthType.LOGIN_WITH_GOOGLE,
-        name: 'Log in with Google',
-        description: null,
-      },
-      {
-        id: AuthType.USE_OLLAMA,
-        name: 'Use Ollama API key',
-        description:
-          'Requires setting the `OLLAMA_API_KEY` environment variable',
-      },
-      {
-        id: AuthType.USE_VERTEX_AI,
-        name: 'Vertex AI',
-        description: null,
+        id: AuthType.USE_OLLAMA_SERVER,
+        name: 'Ollama Server',
+        description: 'Connect to local or remote Ollama server (default: http://localhost:11434)',
       },
     ];
 

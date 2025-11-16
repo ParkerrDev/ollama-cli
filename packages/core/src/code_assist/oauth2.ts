@@ -4,18 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { Credentials, AuthClient, JWTInput } from 'google-auth-library';
+import type { Credentials, AuthClient } from 'google-auth-library';
 import {
   OAuth2Client,
-  Compute,
   CodeChallengeMethod,
-  GoogleAuth,
 } from 'google-auth-library';
 import * as http from 'node:http';
 import url from 'node:url';
 import crypto from 'node:crypto';
 import * as net from 'node:net';
-import open from 'open';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import type { Config } from '../config/config.js';
@@ -30,16 +27,15 @@ import { debugLogger } from '../utils/debugLogger.js';
 
 const userAccountManager = new UserAccountManager();
 
-//  OAuth Client ID used to initiate OAuth2Client class.
+// OAuth Client ID used to initiate OAuth2Client class.
+// Note: OAuth is deprecated and no longer used with Ollama server
+// @ts-expect-error - Keeping for reference but no longer used
 const OAUTH_CLIENT_ID =
   '681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com';
 
 // OAuth Secret value used to initiate OAuth2Client class.
-// Note: It's ok to save this in git because this is an installed application
-// as described here: https://developers.google.com/identity/protocols/oauth2#installed
-// "The process results in a client ID and, in some cases, a client secret,
-// which you embed in the source code of your application. (In this context,
-// the client secret is obviously not treated as a secret.)"
+// Note: OAuth is deprecated and no longer used with Ollama server
+// @ts-expect-error - Keeping for reference but no longer used
 const OAUTH_CLIENT_SECRET = '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';
 
 // OAuth Scopes for Cloud Code authorization.
@@ -75,184 +71,9 @@ async function initOauthClient(
   authType: AuthType,
   config: Config,
 ): Promise<AuthClient> {
-  const credentials = await fetchCachedCredentials();
-
-  if (
-    credentials &&
-    (credentials as { type?: string }).type ===
-      'external_account_authorized_user'
-  ) {
-    const auth = new GoogleAuth({
-      scopes: OAUTH_SCOPE,
-    });
-    const byoidClient = await auth.fromJSON({
-      ...credentials,
-      refresh_token: credentials.refresh_token ?? undefined,
-    });
-    const token = await byoidClient.getAccessToken();
-    if (token) {
-      debugLogger.debug('Created BYOID auth client.');
-      return byoidClient;
-    }
-  }
-
-  const client = new OAuth2Client({
-    clientId: OAUTH_CLIENT_ID,
-    clientSecret: OAUTH_CLIENT_SECRET,
-    transporterOptions: {
-      proxy: config.getProxy(),
-    },
-  });
-  const useEncryptedStorage = getUseEncryptedStorageFlag();
-
-  if (
-    process.env['GOOGLE_GENAI_USE_GCA'] &&
-    process.env['GOOGLE_CLOUD_ACCESS_TOKEN']
-  ) {
-    client.setCredentials({
-      access_token: process.env['GOOGLE_CLOUD_ACCESS_TOKEN'],
-    });
-    await fetchAndCacheUserInfo(client);
-    return client;
-  }
-
-  client.on('tokens', async (tokens: Credentials) => {
-    if (useEncryptedStorage) {
-      await OAuthCredentialStorage.saveCredentials(tokens);
-    } else {
-      await cacheCredentials(tokens);
-    }
-  });
-
-  if (credentials) {
-    client.setCredentials(credentials as Credentials);
-    try {
-      // This will verify locally that the credentials look good.
-      const { token } = await client.getAccessToken();
-      if (token) {
-        // This will check with the server to see if it hasn't been revoked.
-        await client.getTokenInfo(token);
-
-        if (!userAccountManager.getCachedGoogleAccount()) {
-          try {
-            await fetchAndCacheUserInfo(client);
-          } catch (error) {
-            // Non-fatal, continue with existing auth.
-            debugLogger.warn(
-              'Failed to fetch user info:',
-              getErrorMessage(error),
-            );
-          }
-        }
-        debugLogger.log('Loaded cached credentials.');
-        return client;
-      }
-    } catch (error) {
-      debugLogger.debug(
-        `Cached credentials are not valid:`,
-        getErrorMessage(error),
-      );
-    }
-  }
-
-  // In Google Compute Engine based environments (including Cloud Shell), we can
-  // use Application Default Credentials (ADC) provided via its metadata server
-  // to authenticate non-interactively using the identity of the logged-in user.
-  if (authType === AuthType.COMPUTE_ADC) {
-    try {
-      debugLogger.log(
-        'Attempting to authenticate via metadata server application default credentials.',
-      );
-
-      const computeClient = new Compute({
-        // We can leave this empty, since the metadata server will provide
-        // the service account email.
-      });
-      await computeClient.getAccessToken();
-      debugLogger.log('Authentication successful.');
-
-      // Do not cache creds in this case; note that Compute client will handle its own refresh
-      return computeClient;
-    } catch (e) {
-      throw new Error(
-        `Could not authenticate using metadata server application default credentials. Please select a different authentication method or ensure you are in a properly configured environment. Error: ${getErrorMessage(
-          e,
-        )}`,
-      );
-    }
-  }
-
-  if (config.isBrowserLaunchSuppressed()) {
-    let success = false;
-    const maxRetries = 2;
-    for (let i = 0; !success && i < maxRetries; i++) {
-      success = await authWithUserCode(client);
-      if (!success) {
-        debugLogger.error(
-          '\nFailed to authenticate with user code.',
-          i === maxRetries - 1 ? '' : 'Retrying...\n',
-        );
-      }
-    }
-    if (!success) {
-      throw new FatalAuthenticationError(
-        'Failed to authenticate with user code.',
-      );
-    }
-  } else {
-    const webLogin = await authWithWeb(client);
-
-    debugLogger.log(
-      `\n\nCode Assist login required.\n` +
-        `Attempting to open authentication page in your browser.\n` +
-        `Otherwise navigate to:\n\n${webLogin.authUrl}\n\n`,
-    );
-    try {
-      // Attempt to open the authentication URL in the default browser.
-      // We do not use the `wait` option here because the main script's execution
-      // is already paused by `loginCompletePromise`, which awaits the server callback.
-      const childProcess = await open(webLogin.authUrl);
-
-      // IMPORTANT: Attach an error handler to the returned child process.
-      // Without this, if `open` fails to spawn a process (e.g., `xdg-open` is not found
-      // in a minimal Docker container), it will emit an unhandled 'error' event,
-      // causing the entire Node.js process to crash.
-      childProcess.on('error', (error) => {
-        debugLogger.error(
-          `Failed to open browser with error:`,
-          getErrorMessage(error),
-          `\nPlease try running again with NO_BROWSER=true set.`,
-        );
-      });
-    } catch (err) {
-      debugLogger.error(
-        `Failed to open browser with error:`,
-        getErrorMessage(err),
-        `\nPlease try running again with NO_BROWSER=true set.`,
-      );
-      throw new FatalAuthenticationError(
-        `Failed to open browser: ${getErrorMessage(err)}`,
-      );
-    }
-    debugLogger.log('Waiting for authentication...');
-
-    // Add timeout to prevent infinite waiting when browser tab gets stuck
-    const authTimeout = 5 * 60 * 1000; // 5 minutes timeout
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(
-          new FatalAuthenticationError(
-            'Authentication timed out after 5 minutes. The browser tab may have gotten stuck in a loading state. ' +
-              'Please try again or use NO_BROWSER=true for manual authentication.',
-          ),
-        );
-      }, authTimeout);
-    });
-
-    await Promise.race([webLogin.loginCompletePromise, timeoutPromise]);
-  }
-
-  return client;
+  // Ollama server doesn't use OAuth authentication
+  // OAuth is no longer supported in this version
+  throw new Error(`OAuth authentication not supported. Ollama server does not require authentication.`);
 }
 
 export async function getOauthClient(
@@ -265,6 +86,7 @@ export async function getOauthClient(
   return oauthClientPromises.get(authType)!;
 }
 
+// @ts-expect-error - Deprecated OAuth function kept for reference
 async function authWithUserCode(client: OAuth2Client): Promise<boolean> {
   const redirectUri = 'https://codeassist.google.com/authcode';
   const codeVerifier = await client.generateCodeVerifierAsync();
@@ -317,6 +139,7 @@ async function authWithUserCode(client: OAuth2Client): Promise<boolean> {
   return true;
 }
 
+// @ts-expect-error - Deprecated OAuth function kept for reference
 async function authWithWeb(client: OAuth2Client): Promise<OauthWebLogin> {
   const port = await getAvailablePort();
   // The hostname used for the HTTP server binding (e.g., '0.0.0.0' in Docker).
@@ -472,8 +295,9 @@ export function getAvailablePort(): Promise<number> {
   });
 }
 
+// @ts-expect-error - Deprecated OAuth function kept for reference
 async function fetchCachedCredentials(): Promise<
-  Credentials | JWTInput | null
+  Credentials | null
 > {
   const useEncryptedStorage = getUseEncryptedStorageFlag();
   if (useEncryptedStorage) {
@@ -501,6 +325,7 @@ async function fetchCachedCredentials(): Promise<
   return null;
 }
 
+// @ts-expect-error - Deprecated OAuth function kept for reference
 async function cacheCredentials(credentials: Credentials) {
   const filePath = Storage.getOAuthCredsPath();
   await fs.mkdir(path.dirname(filePath), { recursive: true });

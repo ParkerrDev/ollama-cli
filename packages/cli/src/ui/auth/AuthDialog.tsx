@@ -17,12 +17,10 @@ import { SettingScope } from '../../config/settings.js';
 import {
   AuthType,
   clearCachedCredentialFile,
-  debugLogger,
   type Config,
 } from '@google/ollama-cli-core';
 import { useKeypress } from '../hooks/useKeypress.js';
 import { AuthState } from '../types.js';
-import { runExitCleanup } from '../../utils/cleanup.js';
 import { validateAuthMethodWithSettings } from './useAuth.js';
 
 interface AuthDialogProps {
@@ -41,37 +39,10 @@ export function AuthDialog({
   onAuthError,
 }: AuthDialogProps): React.JSX.Element {
   let items = [
-    // {
-    //   label: 'Login with Google',
-    //   value: AuthType.LOGIN_WITH_GOOGLE,
-    //   key: AuthType.LOGIN_WITH_GOOGLE,
-    // },
-    // ...(process.env['CLOUD_SHELL'] === 'true'
-    //   ? [
-    //       {
-    //         label: 'Use Cloud Shell user credentials',
-    //         value: AuthType.COMPUTE_ADC,
-    //         key: AuthType.COMPUTE_ADC,
-    //       },
-    //     ]
-    //   : process.env['OLLAMA_CLI_USE_COMPUTE_ADC'] === 'true'
-    //     ? [
-    //         {
-    //           label: 'Use metadata server application default credentials',
-    //           value: AuthType.COMPUTE_ADC,
-    //           key: AuthType.COMPUTE_ADC,
-    //         },
-    //       ]
-    //     : []),
-    // {
-    //   label: 'Use Ollama API Key',
-    //   value: AuthType.USE_OLLAMA,
-    //   key: AuthType.USE_OLLAMA,
-    // },
     {
-      label: 'Vertex AI',
-      value: AuthType.USE_VERTEX_AI,
-      key: AuthType.USE_VERTEX_AI,
+      label: 'Ollama Server',
+      value: AuthType.USE_OLLAMA_SERVER,
+      key: AuthType.USE_OLLAMA_SERVER,
     },
   ];
 
@@ -99,11 +70,7 @@ export function AuthDialog({
       return item.value === defaultAuthType;
     }
 
-    if (process.env['OLLAMA_API_KEY']) {
-      return item.value === AuthType.USE_OLLAMA;
-    }
-
-    return item.value === AuthType.LOGIN_WITH_GOOGLE;
+    return item.value === AuthType.USE_OLLAMA_SERVER;
   });
   if (settings.merged.security?.auth?.enforcedType) {
     initialAuthIndex = 0;
@@ -115,28 +82,11 @@ export function AuthDialog({
         await clearCachedCredentialFile();
 
         settings.setValue(scope, 'security.auth.selectedType', authType);
-        if (
-          authType === AuthType.LOGIN_WITH_GOOGLE &&
-          config.isBrowserLaunchSuppressed()
-        ) {
-          runExitCleanup();
-          debugLogger.log(
-            `
-----------------------------------------------------------------
-Logging in with Google... Please restart Ollama CLI to continue.
-----------------------------------------------------------------
-            `,
-          );
-          process.exit(0);
-        }
       }
-      if (authType === AuthType.USE_OLLAMA) {
-        setAuthState(AuthState.AwaitingApiKeyInput);
-        return;
-      }
+      // No API key input needed for Ollama Server
       setAuthState(AuthState.Unauthenticated);
     },
-    [settings, config, setAuthState],
+    [settings, setAuthState],
   );
 
   const handleAuthSelect = (authMethod: AuthType) => {

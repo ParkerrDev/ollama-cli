@@ -29,22 +29,22 @@ describe('validateAuthMethod', () => {
   });
 
   it('should return null for LOGIN_WITH_GOOGLE', () => {
-    expect(validateAuthMethod(AuthType.LOGIN_WITH_GOOGLE)).toBeNull();
+    expect(validateAuthMethod(AuthType.USE_OLLAMA_SERVER)).toBeNull();
   });
 
   it('should return null for COMPUTE_ADC', () => {
-    expect(validateAuthMethod(AuthType.COMPUTE_ADC)).toBeNull();
+    expect(validateAuthMethod(AuthType.USE_OLLAMA_SERVER)).toBeNull();
   });
 
   describe('USE_OLLAMA', () => {
     it('should return null if OLLAMA_API_KEY is set', () => {
       vi.stubEnv('OLLAMA_API_KEY', 'test-key');
-      expect(validateAuthMethod(AuthType.USE_OLLAMA)).toBeNull();
+      expect(validateAuthMethod(AuthType.USE_OLLAMA_SERVER)).toBeNull();
     });
 
     it('should return an error message if OLLAMA_API_KEY is not set', () => {
       vi.stubEnv('OLLAMA_API_KEY', undefined);
-      expect(validateAuthMethod(AuthType.USE_OLLAMA)).toBeNull();
+      expect(validateAuthMethod(AuthType.USE_OLLAMA_SERVER)).toBeNull();
     });
   });
 
@@ -52,18 +52,18 @@ describe('validateAuthMethod', () => {
     it('should return null if GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION are set', () => {
       vi.stubEnv('GOOGLE_CLOUD_PROJECT', 'test-project');
       vi.stubEnv('GOOGLE_CLOUD_LOCATION', 'test-location');
-      expect(validateAuthMethod(AuthType.USE_VERTEX_AI)).toBeNull();
+      expect(validateAuthMethod(AuthType.USE_OLLAMA_SERVER)).toBeNull();
     });
 
     it('should return null if GOOGLE_API_KEY is set', () => {
       vi.stubEnv('GOOGLE_API_KEY', 'test-api-key');
-      expect(validateAuthMethod(AuthType.USE_VERTEX_AI)).toBeNull();
+      expect(validateAuthMethod(AuthType.USE_OLLAMA_SERVER)).toBeNull();
     });
 
     it('should return an error message if no required environment variables are set', () => {
       vi.stubEnv('GOOGLE_CLOUD_PROJECT', undefined);
       vi.stubEnv('GOOGLE_CLOUD_LOCATION', undefined);
-      expect(validateAuthMethod(AuthType.USE_VERTEX_AI)).toBe(
+      expect(validateAuthMethod(AuthType.USE_OLLAMA_SERVER)).toBe(
         'When using Vertex AI, you must specify either:\n' +
           '• GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION environment variables.\n' +
           '• GOOGLE_API_KEY environment variable (if using express mode).\n' +

@@ -12,16 +12,12 @@ import { type LoadedSettings } from './config/settings.js';
 import { handleError } from './utils/errors.js';
 
 function getAuthTypeFromEnv(): AuthType | undefined {
-  if (process.env['GOOGLE_GENAI_USE_GCA'] === 'true') {
-    return AuthType.LOGIN_WITH_GOOGLE;
+  // Only Ollama Server is supported now, check for OLLAMA_BASE_URL
+  if (process.env['OLLAMA_BASE_URL']) {
+    return AuthType.USE_OLLAMA_SERVER;
   }
-  if (process.env['GOOGLE_GENAI_USE_VERTEXAI'] === 'true') {
-    return AuthType.USE_VERTEX_AI;
-  }
-  if (process.env['OLLAMA_API_KEY']) {
-    return AuthType.USE_OLLAMA;
-  }
-  return undefined;
+  // Default to Ollama Server
+  return AuthType.USE_OLLAMA_SERVER;
 }
 
 export async function validateNonInteractiveAuth(

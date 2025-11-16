@@ -18,6 +18,7 @@ import type { UserTierId } from '../code_assist/types.js';
 import { LoggingContentGenerator } from './loggingContentGenerator.js';
 import { FakeContentGenerator } from './fakeContentGenerator.js';
 import { RecordingContentGenerator } from './recordingContentGenerator.js';
+import { OpenAICompatibleContentGenerator } from '../adapters/index.js';
 
 /**
  * Interface abstracting the core functionalities for generating content and counting tokens.
@@ -82,18 +83,9 @@ export async function createContentGenerator(
     if (gcConfig.fakeResponses) {
       return FakeContentGenerator.fromFile(gcConfig.fakeResponses);
     }
-    
-    const version = process.env['CLI_VERSION'] || process.version;
-    const userAgent = `OllamaCLI/${version} (${process.platform}; ${process.arch})`;
-    const baseHeaders: Record<string, string> = {
-      'User-Agent': userAgent,
-    };
 
     // For Ollama server, we use OpenAI-compatible API
     if (config.authType === AuthType.USE_OLLAMA_SERVER) {
-      // Import dynamically to avoid circular dependencies
-      const { OpenAICompatibleContentGenerator } = await import('../adapters/openaiCompatibleContentGenerator.js');
-      
       const ollamaConfig = {
         ...config,
         baseUrl: `${config.baseUrl}/v1`, // Ollama uses OpenAI-compatible /v1 endpoint

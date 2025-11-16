@@ -234,7 +234,7 @@ describe('ClearcutLogger', () => {
     it('logs default metadata', () => {
       // Define expected values
       const session_id = 'my-session-id';
-      const auth_type = AuthType.USE_OLLAMA;
+      const auth_type = AuthType.USE_OLLAMA_SERVER;
       const google_accounts = 123;
       const surface = 'ide-1234';
       const cli_version = CLI_VERSION;

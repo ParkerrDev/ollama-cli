@@ -434,7 +434,7 @@ describe('Logger', () => {
       },
     ])('should save a checkpoint', async ({ tag, encodedTag }) => {
       await logger.saveCheckpoint(
-        { history: conversation, authType: AuthType.LOGIN_WITH_GOOGLE },
+        { history: conversation, authType: AuthType.USE_OLLAMA_SERVER },
         tag,
       );
       const taggedFilePath = path.join(
@@ -444,7 +444,7 @@ describe('Logger', () => {
       const fileContent = await fs.readFile(taggedFilePath, 'utf-8');
       expect(JSON.parse(fileContent)).toEqual({
         history: conversation,
-        authType: AuthType.LOGIN_WITH_GOOGLE,
+        authType: AuthType.USE_OLLAMA_SERVER,
       });
     });
 
@@ -504,7 +504,7 @@ describe('Logger', () => {
           ...conversation,
           { role: 'user', parts: [{ text: 'hello' }] },
         ],
-        authType: AuthType.USE_OLLAMA,
+        authType: AuthType.USE_OLLAMA_SERVER,
       };
       const taggedFilePath = path.join(
         TEST_OLLAMA_DIR,

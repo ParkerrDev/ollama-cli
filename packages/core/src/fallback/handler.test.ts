@@ -32,8 +32,8 @@ vi.mock('../telemetry/index.js', () => ({
 
 const MOCK_PRO_MODEL = DEFAULT_OLLAMA_MODEL;
 const FALLBACK_MODEL = DEFAULT_OLLAMA_FLASH_MODEL;
-const AUTH_OAUTH = AuthType.LOGIN_WITH_GOOGLE;
-const AUTH_API_KEY = AuthType.USE_OLLAMA;
+const AUTH_OAUTH = AuthType.USE_OLLAMA_SERVER;
+const AUTH_API_KEY = AuthType.USE_OLLAMA_SERVER;
 
 const createMockConfig = (overrides: Partial<Config> = {}): Config =>
   ({

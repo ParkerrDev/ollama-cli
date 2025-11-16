@@ -885,11 +885,8 @@ export function getConventionAttributes(event: {
  */
 function getGenAiProvider(authType?: string): GenAiProviderName {
   switch (authType) {
-    case AuthType.USE_VERTEX_AI:
-    case AuthType.COMPUTE_ADC:
-    case AuthType.LOGIN_WITH_GOOGLE:
-      return GenAiProviderName.GCP_VERTEX_AI;
-    case AuthType.USE_OLLAMA:
+    case AuthType.USE_OLLAMA_SERVER:
+      return GenAiProviderName.GCP_GEN_AI; // Keeping same enum value for now
     default:
       return GenAiProviderName.GCP_GEN_AI;
   }

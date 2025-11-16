@@ -80,8 +80,9 @@ export class StartSessionEvent implements BaseTelemetryEvent {
     let useOllama = false;
     let useVertex = false;
     if (generatorConfig && generatorConfig.authType) {
-      useOllama = generatorConfig.authType === AuthType.USE_OLLAMA;
-      useVertex = generatorConfig.authType === AuthType.USE_VERTEX_AI;
+      useOllama = generatorConfig.authType === AuthType.USE_OLLAMA_SERVER;
+      // Vertex AI is no longer supported - only Ollama server
+      useVertex = false;
     }
 
     this['event.name'] = 'cli_config';

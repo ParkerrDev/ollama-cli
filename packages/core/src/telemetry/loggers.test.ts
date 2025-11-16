@@ -184,7 +184,7 @@ describe('loggers', () => {
         getContentGeneratorConfig: () => ({
           model: 'test-model',
           apiKey: 'test-api-key',
-          authType: AuthType.USE_VERTEX_AI,
+          authType: AuthType.USE_OLLAMA_SERVER,
         }),
         getTelemetryEnabled: () => true,
         getUsageStatisticsEnabled: () => true,
@@ -263,7 +263,7 @@ describe('loggers', () => {
       const event = new UserPromptEvent(
         11,
         'prompt-id-8',
-        AuthType.USE_VERTEX_AI,
+        AuthType.USE_OLLAMA_SERVER,
         'test-prompt',
       );
 
@@ -298,7 +298,7 @@ describe('loggers', () => {
       const event = new UserPromptEvent(
         11,
         'prompt-id-9',
-        AuthType.COMPUTE_ADC,
+        AuthType.USE_OLLAMA_SERVER,
         'test-prompt',
       );
 
@@ -397,7 +397,7 @@ describe('loggers', () => {
             },
           ],
         },
-        AuthType.LOGIN_WITH_GOOGLE,
+        AuthType.USE_OLLAMA_SERVER,
         usageData,
         'test-response',
       );
@@ -555,7 +555,7 @@ describe('loggers', () => {
             port: 8080,
           },
         },
-        AuthType.LOGIN_WITH_GOOGLE,
+        AuthType.USE_OLLAMA_SERVER,
         'ApiError',
         503,
       );
@@ -692,7 +692,7 @@ describe('loggers', () => {
     } as unknown as Config;
 
     it('should log flash fallback event', () => {
-      const event = new FlashFallbackEvent(AuthType.USE_VERTEX_AI);
+      const event = new FlashFallbackEvent(AuthType.USE_OLLAMA_SERVER);
 
       logFlashFallback(mockConfig, event);
 

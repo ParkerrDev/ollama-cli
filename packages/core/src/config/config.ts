@@ -645,11 +645,11 @@ export class Config {
       }
     }
 
-    // Vertex and Genai have incompatible encryption and sending history with
-    // thoughtSignature from Genai to Vertex will fail, we need to strip them
+    // For Ollama server, we may want to strip certain metadata when switching
+    // (though typically we only have one auth type now)
     if (
-      this.contentGeneratorConfig?.authType === AuthType.USE_OLLAMA &&
-      authMethod === AuthType.LOGIN_WITH_GOOGLE
+      this.contentGeneratorConfig?.authType === AuthType.USE_OLLAMA_SERVER &&
+      authMethod === AuthType.USE_OLLAMA_SERVER
     ) {
       // Restore the conversation history to the new client
       this.ollamaClient.stripThoughtsFromHistory();

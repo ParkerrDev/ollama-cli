@@ -215,7 +215,7 @@ describe('Ollama Client (client.ts)', () => {
     const contentGeneratorConfig: ContentGeneratorConfig = {
       apiKey: 'test-key',
       vertexai: false,
-      authType: AuthType.USE_OLLAMA,
+      authType: AuthType.USE_OLLAMA_SERVER,
     };
     mockConfig = {
       getContentGeneratorConfig: vi

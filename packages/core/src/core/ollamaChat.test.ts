@@ -1601,7 +1601,7 @@ describe('OllamaChat', () => {
     });
 
     it('should call handleFallback with the specific failed model and retry if handler returns true', async () => {
-      const authType = AuthType.LOGIN_WITH_GOOGLE;
+      const authType = AuthType.USE_OLLAMA_SERVER;
       vi.mocked(mockConfig.getContentGeneratorConfig).mockReturnValue({
         authType,
       });

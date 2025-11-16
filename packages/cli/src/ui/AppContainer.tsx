@@ -439,7 +439,7 @@ export const AppContainer = (props: AppContainerProps) => {
         }
 
         if (
-          authType === AuthType.LOGIN_WITH_GOOGLE &&
+          authType === AuthType.USE_OLLAMA_SERVER &&
           config.isBrowserLaunchSuppressed()
         ) {
           await runExitCleanup();
@@ -469,7 +469,7 @@ Logging in with Google... Please restart Ollama CLI to continue.
 
         await saveApiKey(apiKey);
         await reloadApiKey();
-        await config.refreshAuth(AuthType.USE_OLLAMA);
+        await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
         setAuthState(AuthState.Authenticated);
       } catch (e) {
         onAuthError(

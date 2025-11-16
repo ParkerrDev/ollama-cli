@@ -17,7 +17,7 @@ export async function handleFallback(
   error?: unknown,
 ): Promise<string | boolean | null> {
   // Applicability Checks
-  if (authType !== AuthType.LOGIN_WITH_GOOGLE) return null;
+  if (authType !== AuthType.USE_OLLAMA_SERVER) return null;
 
   const fallbackModel = DEFAULT_OLLAMA_FLASH_MODEL;
 

@@ -94,19 +94,19 @@ describe('Retry Utility Fallback Integration', () => {
       initialDelayMs: 1,
       maxDelayMs: 10,
       onPersistent429: mockPersistent429Callback,
-      authType: AuthType.LOGIN_WITH_GOOGLE,
+      authType: AuthType.USE_OLLAMA_SERVER,
     });
 
     expect(fallbackCalled).toBe(true);
     expect(mockPersistent429Callback).toHaveBeenCalledWith(
-      AuthType.LOGIN_WITH_GOOGLE,
+      AuthType.USE_OLLAMA_SERVER,
       expect.any(TerminalQuotaError),
     );
     expect(result).toBe('success after fallback');
     expect(mockApiCall).toHaveBeenCalledTimes(3);
   });
 
-  it('should not trigger onPersistent429 for API key users', async () => {
+  it('should not trigger onPersistent429 for different auth types', async () => {
     const fallbackCallback = vi.fn();
 
     const mockApiCall = vi
@@ -120,7 +120,7 @@ describe('Retry Utility Fallback Integration', () => {
       initialDelayMs: 1,
       maxDelayMs: 10,
       onPersistent429: fallbackCallback,
-      authType: AuthType.USE_OLLAMA, // API key auth type
+      authType: undefined, // No specific auth type
     });
 
     await expect(promise).rejects.toThrow('Daily limit');

@@ -109,8 +109,8 @@ describe('AuthDialog', () => {
     const items = mockedRadioButtonSelect.mock.calls[0][0].items;
     expect(items).toContainEqual({
       label: 'Use Cloud Shell user credentials',
-      value: AuthType.COMPUTE_ADC,
-      key: AuthType.COMPUTE_ADC,
+      value: AuthType.USE_OLLAMA_SERVER,
+      key: AuthType.USE_OLLAMA_SERVER,
     });
   });
 
@@ -120,8 +120,8 @@ describe('AuthDialog', () => {
     const items = mockedRadioButtonSelect.mock.calls[0][0].items;
     expect(items).not.toContainEqual({
       label: 'Use metadata server application default credentials',
-      value: AuthType.COMPUTE_ADC,
-      key: AuthType.COMPUTE_ADC,
+      value: AuthType.USE_OLLAMA_SERVER,
+      key: AuthType.USE_OLLAMA_SERVER,
     });
   });
 
@@ -131,8 +131,8 @@ describe('AuthDialog', () => {
     const items = mockedRadioButtonSelect.mock.calls[0][0].items;
     expect(items).toContainEqual({
       label: 'Use metadata server application default credentials',
-      value: AuthType.COMPUTE_ADC,
-      key: AuthType.COMPUTE_ADC,
+      value: AuthType.USE_OLLAMA_SERVER,
+      key: AuthType.USE_OLLAMA_SERVER,
     });
   });
 
@@ -142,51 +142,51 @@ describe('AuthDialog', () => {
     const items = mockedRadioButtonSelect.mock.calls[0][0].items;
     expect(items).not.toContainEqual({
       label: 'Use Cloud Shell user credentials',
-      value: AuthType.COMPUTE_ADC,
-      key: AuthType.COMPUTE_ADC,
+      value: AuthType.USE_OLLAMA_SERVER,
+      key: AuthType.USE_OLLAMA_SERVER,
     });
   });
 
   it('filters auth types when enforcedType is set', () => {
-    props.settings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA;
+    props.settings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA_SERVER;
     renderWithProviders(<AuthDialog {...props} />);
     const items = mockedRadioButtonSelect.mock.calls[0][0].items;
     expect(items).toHaveLength(1);
-    expect(items[0].value).toBe(AuthType.USE_OLLAMA);
+    expect(items[0].value).toBe(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('sets initial index to 0 when enforcedType is set', () => {
-    props.settings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA;
+    props.settings.merged.security!.auth!.enforcedType = AuthType.USE_OLLAMA_SERVER;
     renderWithProviders(<AuthDialog {...props} />);
     const { initialIndex } = mockedRadioButtonSelect.mock.calls[0][0];
     expect(initialIndex).toBe(0);
   });
 
   it('selects initial auth type from settings', () => {
-    props.settings.merged.security!.auth!.selectedType = AuthType.USE_VERTEX_AI;
+    props.settings.merged.security!.auth!.selectedType = AuthType.USE_OLLAMA_SERVER;
     renderWithProviders(<AuthDialog {...props} />);
     const { items, initialIndex } = mockedRadioButtonSelect.mock.calls[0][0];
-    expect(items[initialIndex].value).toBe(AuthType.USE_VERTEX_AI);
+    expect(items[initialIndex].value).toBe(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('selects initial auth type from OLLAMA_DEFAULT_AUTH_TYPE env var', () => {
-    process.env['OLLAMA_DEFAULT_AUTH_TYPE'] = AuthType.USE_OLLAMA;
+    process.env['OLLAMA_DEFAULT_AUTH_TYPE'] = AuthType.USE_OLLAMA_SERVER;
     renderWithProviders(<AuthDialog {...props} />);
     const { items, initialIndex } = mockedRadioButtonSelect.mock.calls[0][0];
-    expect(items[initialIndex].value).toBe(AuthType.USE_OLLAMA);
+    expect(items[initialIndex].value).toBe(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('selects initial auth type from OLLAMA_API_KEY env var', () => {
     process.env['OLLAMA_API_KEY'] = 'test-key';
     renderWithProviders(<AuthDialog {...props} />);
     const { items, initialIndex } = mockedRadioButtonSelect.mock.calls[0][0];
-    expect(items[initialIndex].value).toBe(AuthType.USE_OLLAMA);
+    expect(items[initialIndex].value).toBe(AuthType.USE_OLLAMA_SERVER);
   });
 
   it('defaults to Login with Google', () => {
     renderWithProviders(<AuthDialog {...props} />);
     const { items, initialIndex } = mockedRadioButtonSelect.mock.calls[0][0];
-    expect(items[initialIndex].value).toBe(AuthType.LOGIN_WITH_GOOGLE);
+    expect(items[initialIndex].value).toBe(AuthType.USE_OLLAMA_SERVER);
   });
 
   describe('handleAuthSelect', () => {
@@ -195,10 +195,10 @@ describe('AuthDialog', () => {
       renderWithProviders(<AuthDialog {...props} />);
       const { onSelect: handleAuthSelect } =
         mockedRadioButtonSelect.mock.calls[0][0];
-      handleAuthSelect(AuthType.USE_OLLAMA);
+      handleAuthSelect(AuthType.USE_OLLAMA_SERVER);
 
       expect(mockedValidateAuthMethod).toHaveBeenCalledWith(
-        AuthType.USE_OLLAMA,
+        AuthType.USE_OLLAMA_SERVER,
         props.settings,
       );
       expect(props.onAuthError).toHaveBeenCalledWith('Invalid method');
@@ -210,10 +210,10 @@ describe('AuthDialog', () => {
       renderWithProviders(<AuthDialog {...props} />);
       const { onSelect: handleAuthSelect } =
         mockedRadioButtonSelect.mock.calls[0][0];
-      await handleAuthSelect(AuthType.USE_OLLAMA);
+      await handleAuthSelect(AuthType.USE_OLLAMA_SERVER);
 
       expect(mockedValidateAuthMethod).toHaveBeenCalledWith(
-        AuthType.USE_OLLAMA,
+        AuthType.USE_OLLAMA_SERVER,
         props.settings,
       );
       expect(props.onAuthError).not.toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe('AuthDialog', () => {
       expect(props.settings.setValue).toHaveBeenCalledWith(
         SettingScope.User,
         'security.auth.selectedType',
-        AuthType.USE_OLLAMA,
+        AuthType.USE_OLLAMA_SERVER,
       );
       expect(props.setAuthState).toHaveBeenCalledWith(
         AuthState.AwaitingApiKeyInput,
@@ -239,7 +239,7 @@ describe('AuthDialog', () => {
       renderWithProviders(<AuthDialog {...props} />);
       const { onSelect: handleAuthSelect } =
         mockedRadioButtonSelect.mock.calls[0][0];
-      await handleAuthSelect(AuthType.LOGIN_WITH_GOOGLE);
+      await handleAuthSelect(AuthType.USE_OLLAMA_SERVER);
 
       expect(mockedRunExitCleanup).toHaveBeenCalled();
       expect(logSpy).toHaveBeenCalledWith(
@@ -279,7 +279,7 @@ describe('AuthDialog', () => {
     });
 
     it('calls onSelect(undefined) on escape if auth method is set', () => {
-      props.settings.merged.security!.auth!.selectedType = AuthType.USE_OLLAMA;
+      props.settings.merged.security!.auth!.selectedType = AuthType.USE_OLLAMA_SERVER;
       renderWithProviders(<AuthDialog {...props} />);
       const keypressHandler = mockedUseKeypress.mock.calls[0][0];
       keypressHandler({ name: 'escape' });

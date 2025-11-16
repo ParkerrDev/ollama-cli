@@ -12,7 +12,7 @@ import { useTextBuffer } from '../components/shared/text-buffer.js';
 import { useUIState } from '../contexts/UIStateContext.js';
 
 interface ApiAuthDialogProps {
-  onSubmit: (apiKey: string) => void;
+  onSubmit: (serverUrl: string) => void;
   onCancel: () => void;
   error?: string | null;
   defaultValue?: string;
@@ -22,21 +22,20 @@ export function ApiAuthDialog({
   onSubmit,
   onCancel,
   error,
-  defaultValue = '',
+  defaultValue = 'http://localhost:11434',
 }: ApiAuthDialogProps): React.JSX.Element {
   const { mainAreaWidth } = useUIState();
   const viewportWidth = mainAreaWidth - 8;
 
   const buffer = useTextBuffer({
-    initialText: defaultValue || '',
-    initialCursorOffset: defaultValue?.length || 0,
+    initialText: defaultValue || 'http://localhost:11434',
+    initialCursorOffset: defaultValue?.length || 'http://localhost:11434'.length,
     viewport: {
       width: viewportWidth,
       height: 4,
     },
-    isValidPath: () => false, // No path validation needed for API key
-    inputFilter: (text) =>
-      text.replace(/[^a-zA-Z0-9_-]/g, '').replace(/[\r\n]/g, ''),
+    isValidPath: () => false, // No path validation needed for server URL
+    inputFilter: (text) => text.replace(/[\r\n]/g, ''),
     singleLine: true,
   });
 
@@ -53,18 +52,15 @@ export function ApiAuthDialog({
       width="100%"
     >
       <Text bold color={theme.text.primary}>
-        Enter Ollama API Key
+        Configure Ollama Server
       </Text>
       <Box marginTop={1} flexDirection="column">
         <Text color={theme.text.primary}>
-          Please enter your Ollama API key. It will be securely stored in your
-          system keychain.
+          Please enter the URL of your Ollama server. This will be saved in your
+          settings.
         </Text>
         <Text color={theme.text.secondary}>
-          You can get an API key from{' '}
-          <Text color={theme.text.link}>
-            https://aistudio.google.com/app/apikey
-          </Text>
+          Default: http://localhost:11434 (if Ollama is running locally)
         </Text>
       </Box>
       <Box marginTop={1} flexDirection="row">
@@ -78,7 +74,7 @@ export function ApiAuthDialog({
             buffer={buffer}
             onSubmit={handleSubmit}
             onCancel={onCancel}
-            placeholder="Paste your API key here"
+            placeholder="http://localhost:11434"
           />
         </Box>
       </Box>

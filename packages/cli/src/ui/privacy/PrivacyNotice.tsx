@@ -25,11 +25,11 @@ const PrivacyNoticeText = ({
   const authType = config.getContentGeneratorConfig()?.authType;
 
   switch (authType) {
-    case AuthType.USE_OLLAMA:
+    case AuthType.USE_OLLAMA_SERVER:
       return <OllamaPrivacyNotice onExit={onExit} />;
-    case AuthType.USE_VERTEX_AI:
+    case AuthType.USE_OLLAMA_SERVER:
       return <CloudPaidPrivacyNotice onExit={onExit} />;
-    case AuthType.LOGIN_WITH_GOOGLE:
+    case AuthType.USE_OLLAMA_SERVER:
     default:
       return <CloudFreePrivacyNotice config={config} onExit={onExit} />;
   }

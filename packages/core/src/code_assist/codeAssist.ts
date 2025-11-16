@@ -6,8 +6,6 @@
 
 import type { ContentGenerator } from '../core/contentGenerator.js';
 import { AuthType } from '../core/contentGenerator.js';
-import { getOauthClient } from './oauth2.js';
-import { setupUser } from './setup.js';
 import type { HttpOptions } from './server.js';
 import { CodeAssistServer } from './server.js';
 import type { Config } from '../config/config.js';
@@ -19,22 +17,10 @@ export async function createCodeAssistContentGenerator(
   config: Config,
   sessionId?: string,
 ): Promise<ContentGenerator> {
-  if (
-    authType === AuthType.LOGIN_WITH_GOOGLE ||
-    authType === AuthType.COMPUTE_ADC
-  ) {
-    const authClient = await getOauthClient(authType, config);
-    const userData = await setupUser(authClient);
-    return new CodeAssistServer(
-      authClient,
-      userData.projectId,
-      httpOptions,
-      sessionId,
-      userData.userTier,
-    );
-  }
-
-  throw new Error(`Unsupported authType: ${authType}`);
+  // OAuth-based Code Assist is deprecated in favor of Ollama server
+  throw new Error(
+    `Code Assist with OAuth is no longer supported. Please use Ollama server mode (authType: ${authType}).`,
+  );
 }
 
 export function getCodeAssistServer(

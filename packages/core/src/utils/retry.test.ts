@@ -392,8 +392,8 @@ describe('retryWithBackoff', () => {
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 12345);
     });
 
-    it.each([[AuthType.USE_OLLAMA], [AuthType.USE_VERTEX_AI], [undefined]])(
-      'should not trigger fallback for non-Google auth users (authType: %s) on TerminalQuotaError',
+    it.each([[AuthType.USE_OLLAMA_SERVER], [undefined]])(
+      'should not trigger fallback for different auth configurations (authType: %s) on TerminalQuotaError',
       async (authType) => {
         const fallbackCallback = vi.fn();
         const mockFn = vi.fn().mockImplementation(async () => {

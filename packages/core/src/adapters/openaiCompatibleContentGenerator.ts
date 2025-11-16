@@ -11,7 +11,6 @@ import type {
   CountTokensParameters,
   EmbedContentResponse,
   EmbedContentParameters,
-  Part,
 } from '@google/genai';
 import type { ContentGenerator, ContentGeneratorConfig } from '../core/contentGenerator.js';
 
@@ -169,10 +168,11 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
     return this.convertFromOpenAIFormat(data);
   }
 
-  async *generateContentStream(
+  async generateContentStream(
     request: GenerateContentParameters,
     userPromptId: string,
-  ): AsyncGenerator<GenerateContentResponse> {
+  ): Promise<AsyncGenerator<GenerateContentResponse>> {
+    const self = this;
     const openAIRequest = this.convertToOpenAIFormat(request);
     const endpoint = `${this.config.baseUrl}/chat/completions`;
 
@@ -195,46 +195,53 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
       throw new Error('Streaming response body is empty!');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    async function* generator(): AsyncGenerator<GenerateContentResponse> {
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') {
-              return;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-              const response = this.convertFromOpenAIFormat(parsed, true);
-              if (response) {
-                yield response;
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') {
+                return;
               }
-            } catch (e) {
-              // Skip invalid JSON chunks
+
+              try {
+                const parsed = JSON.parse(data);
+                const convertedResponse = self.convertFromOpenAIFormat(parsed, true);
+                if (convertedResponse) {
+                  yield convertedResponse;
+                }
+              } catch (e) {
+                // Skip invalid JSON chunks
+              }
             }
           }
         }
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
     }
+
+    return generator();
   }
 
   async countTokens(request: CountTokensParameters): Promise<CountTokensResponse> {
     // Approximate token counting for Ollama
-    const text = this.partsToText(request.contents?.[0]?.parts || []);
+    const contents: any = request.contents;
+    const text = Array.isArray(contents) && contents.length > 0 
+      ? this.partsToText(contents[0]?.parts || [])
+      : '';
     const approximateTokens = Math.ceil(text.length / 4); // Rough estimate: 1 token ≈ 4 chars
 
     return {

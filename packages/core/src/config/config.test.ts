@@ -319,7 +319,7 @@ describe('Server Config (config.ts)', () => {
   describe('refreshAuth', () => {
     it('should refresh auth and update config', async () => {
       const config = new Config(baseParams);
-      const authType = AuthType.USE_OLLAMA;
+      const authType = AuthType.USE_OLLAMA_SERVER;
       const mockContentConfig = {
         apiKey: 'test-key',
       };
@@ -353,9 +353,9 @@ describe('Server Config (config.ts)', () => {
           ({ authType }) as unknown as ContentGeneratorConfig,
       );
 
-      await config.refreshAuth(AuthType.USE_OLLAMA);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER)
 
-      await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
 
       expect(
         config.getOllamaClient().stripThoughtsFromHistory,
@@ -370,9 +370,9 @@ describe('Server Config (config.ts)', () => {
           ({ authType }) as unknown as ContentGeneratorConfig,
       );
 
-      await config.refreshAuth(AuthType.USE_VERTEX_AI);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
 
-      await config.refreshAuth(AuthType.USE_OLLAMA);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER)
 
       expect(
         config.getOllamaClient().stripThoughtsFromHistory,
@@ -661,7 +661,7 @@ describe('Server Config (config.ts)', () => {
         ...baseParams,
         useModelRouter: true,
       });
-      await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
       expect(config.getUseModelRouter()).toBe(true);
     });
 
@@ -670,7 +670,7 @@ describe('Server Config (config.ts)', () => {
         ...baseParams,
         useModelRouter: true,
       });
-      await config.refreshAuth(AuthType.USE_OLLAMA);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER)
       expect(config.getUseModelRouter()).toBe(true);
     });
 
@@ -678,9 +678,9 @@ describe('Server Config (config.ts)', () => {
       const config = new Config({
         ...baseParams,
         useModelRouter: true,
-        disableModelRouterForAuth: [AuthType.USE_OLLAMA],
+        disableModelRouterForAuth: [AuthType.USE_OLLAMA_SERVER],
       });
-      await config.refreshAuth(AuthType.USE_OLLAMA);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
       expect(config.getUseModelRouter()).toBe(false);
     });
 
@@ -690,7 +690,7 @@ describe('Server Config (config.ts)', () => {
         useModelRouter: true,
         disableModelRouterForAuth: [],
       });
-      await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
       expect(config.getUseModelRouter()).toBe(true);
     });
 
@@ -698,9 +698,9 @@ describe('Server Config (config.ts)', () => {
       const config = new Config({
         ...baseParams,
         useModelRouter: false,
-        disableModelRouterForAuth: [AuthType.USE_OLLAMA],
+  disableModelRouterForAuth: [AuthType.USE_OLLAMA_SERVER],
       });
-      await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
       expect(config.getUseModelRouter()).toBe(false);
     });
 
@@ -708,12 +708,12 @@ describe('Server Config (config.ts)', () => {
       const config = new Config({
         ...baseParams,
         useModelRouter: true,
-        disableModelRouterForAuth: [AuthType.USE_OLLAMA],
+  disableModelRouterForAuth: [AuthType.USE_OLLAMA_SERVER],
       });
       const chosenModel = 'ollama-1.5-pro-latest';
       config.setModel(chosenModel);
 
-      await config.refreshAuth(AuthType.USE_OLLAMA);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER)
 
       expect(config.getUseModelRouter()).toBe(false);
       expect(config.getModel()).toBe(chosenModel);
@@ -723,12 +723,12 @@ describe('Server Config (config.ts)', () => {
       const config = new Config({
         ...baseParams,
         useModelRouter: true,
-        disableModelRouterForAuth: [AuthType.USE_OLLAMA],
+  disableModelRouterForAuth: [AuthType.USE_OLLAMA_SERVER],
       });
       const chosenModel = 'ollama-1.5-pro-latest';
       config.setModel(chosenModel);
 
-      await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
 
       expect(config.getUseModelRouter()).toBe(true);
       expect(config.getModel()).toBe(chosenModel);
@@ -741,7 +741,7 @@ describe('Server Config (config.ts)', () => {
         model: 'ollama-flash-latest',
       });
 
-      await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
+      await config.refreshAuth(AuthType.USE_OLLAMA_SERVER);
 
       expect(config.getUseModelRouter()).toBe(true);
       expect(config.getModel()).toBe('ollama-flash-latest');
@@ -1250,7 +1250,7 @@ describe('BaseLlmClient Lifecycle', () => {
 
   it('should successfully initialize BaseLlmClient after refreshAuth is called', async () => {
     const config = new Config(baseParams);
-    const authType = AuthType.USE_OLLAMA;
+    const authType = AuthType.USE_OLLAMA_SERVER
     const mockContentConfig = { model: 'ollama-flash', apiKey: 'test-key' };
 
     vi.mocked(createContentGeneratorConfig).mockResolvedValue(

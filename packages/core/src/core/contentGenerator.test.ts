@@ -41,7 +41,7 @@ describe('createContentGenerator', () => {
     } as unknown as Config;
     const generator = await createContentGenerator(
       {
-        authType: AuthType.USE_OLLAMA,
+        authType: AuthType.USE_OLLAMA_SERVER,
       },
       mockConfigWithFake,
     );
@@ -60,7 +60,7 @@ describe('createContentGenerator', () => {
     } as unknown as Config;
     const generator = await createContentGenerator(
       {
-        authType: AuthType.USE_OLLAMA,
+        authType: AuthType.USE_OLLAMA_SERVER,
       },
       mockConfigWithRecordResponses,
     );
@@ -74,7 +74,7 @@ describe('createContentGenerator', () => {
     );
     const generator = await createContentGenerator(
       {
-        authType: AuthType.LOGIN_WITH_GOOGLE,
+        authType: AuthType.USE_OLLAMA_SERVER,
       },
       mockConfig,
     );
@@ -91,7 +91,7 @@ describe('createContentGenerator', () => {
     );
     const generator = await createContentGenerator(
       {
-        authType: AuthType.COMPUTE_ADC,
+        authType: AuthType.USE_OLLAMA_SERVER,
       },
       mockConfig,
     );
@@ -113,7 +113,7 @@ describe('createContentGenerator', () => {
     const generator = await createContentGenerator(
       {
         apiKey: 'test-api-key',
-        authType: AuthType.USE_OLLAMA,
+        authType: AuthType.USE_OLLAMA_SERVER,
       },
       mockConfig,
     );
@@ -146,7 +146,7 @@ describe('createContentGenerator', () => {
     const generator = await createContentGenerator(
       {
         apiKey: 'test-api-key',
-        authType: AuthType.USE_OLLAMA,
+        authType: AuthType.USE_OLLAMA_SERVER,
       },
       mockConfig,
     );
@@ -190,7 +190,7 @@ describe('createContentGeneratorConfig', () => {
     vi.stubEnv('OLLAMA_API_KEY', 'env-ollama-key');
     const config = await createContentGeneratorConfig(
       mockConfig,
-      AuthType.USE_OLLAMA,
+      AuthType.USE_OLLAMA_SERVER,
     );
     expect(config.apiKey).toBe('env-ollama-key');
     expect(config.vertexai).toBe(false);
@@ -200,7 +200,7 @@ describe('createContentGeneratorConfig', () => {
     vi.stubEnv('OLLAMA_API_KEY', '');
     const config = await createContentGeneratorConfig(
       mockConfig,
-      AuthType.USE_OLLAMA,
+      AuthType.USE_OLLAMA_SERVER,
     );
     expect(config.apiKey).toBeUndefined();
     expect(config.vertexai).toBeUndefined();
@@ -211,7 +211,7 @@ describe('createContentGeneratorConfig', () => {
     vi.mocked(loadApiKey).mockResolvedValue(null);
     const config = await createContentGeneratorConfig(
       mockConfig,
-      AuthType.USE_OLLAMA,
+      AuthType.USE_OLLAMA_SERVER,
     );
     expect(config.apiKey).toBeUndefined();
     expect(config.vertexai).toBeUndefined();
@@ -221,7 +221,7 @@ describe('createContentGeneratorConfig', () => {
     vi.stubEnv('GOOGLE_API_KEY', 'env-google-key');
     const config = await createContentGeneratorConfig(
       mockConfig,
-      AuthType.USE_VERTEX_AI,
+      AuthType.USE_OLLAMA_SERVER,
     );
     expect(config.apiKey).toBe('env-google-key');
     expect(config.vertexai).toBe(true);
@@ -233,7 +233,7 @@ describe('createContentGeneratorConfig', () => {
     vi.stubEnv('GOOGLE_CLOUD_LOCATION', 'env-gcp-location');
     const config = await createContentGeneratorConfig(
       mockConfig,
-      AuthType.USE_VERTEX_AI,
+      AuthType.USE_OLLAMA_SERVER,
     );
     expect(config.vertexai).toBe(true);
     expect(config.apiKey).toBeUndefined();
@@ -245,7 +245,7 @@ describe('createContentGeneratorConfig', () => {
     vi.stubEnv('GOOGLE_CLOUD_LOCATION', '');
     const config = await createContentGeneratorConfig(
       mockConfig,
-      AuthType.USE_VERTEX_AI,
+      AuthType.USE_OLLAMA_SERVER,
     );
     expect(config.apiKey).toBeUndefined();
     expect(config.vertexai).toBeUndefined();
