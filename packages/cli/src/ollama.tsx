@@ -248,6 +248,60 @@ export async function startInteractiveUI(
 
 export async function main() {
   setupUnhandledRejectionHandler();
+  
+  // Handle Ollama model management commands early (before full initialization)
+  const rawArgs = process.argv.slice(2);
+  if (rawArgs.length > 0) {
+    const command = rawArgs[0];
+    const baseUrl = process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+    
+    // Import model management functions dynamically
+    const {
+      listOllamaModels,
+      listRunningModels,
+      showModelInfo,
+      pullModel,
+      deleteModel,
+      copyModel,
+    } = await import('./commands/ollama-models.js');
+    
+    // Handle 'list' or 'ls' command
+    if (command === 'list' || command === 'ls') {
+      await listOllamaModels(baseUrl);
+      process.exit(0);
+    }
+    
+    // Handle 'ps' command
+    if (command === 'ps') {
+      await listRunningModels(baseUrl);
+      process.exit(0);
+    }
+    
+    // Handle 'show' command
+    if (command === 'show' && rawArgs[1]) {
+      await showModelInfo(rawArgs[1], baseUrl);
+      process.exit(0);
+    }
+    
+    // Handle 'pull' command
+    if (command === 'pull' && rawArgs[1]) {
+      await pullModel(rawArgs[1], baseUrl);
+      process.exit(0);
+    }
+    
+    // Handle 'rm' command
+    if (command === 'rm' && rawArgs[1]) {
+      await deleteModel(rawArgs[1], baseUrl);
+      process.exit(0);
+    }
+    
+    // Handle 'cp' command
+    if (command === 'cp' && rawArgs[1] && rawArgs[2]) {
+      await copyModel(rawArgs[1], rawArgs[2], baseUrl);
+      process.exit(0);
+    }
+  }
+  
   const settings = loadSettings();
   migrateDeprecatedSettings(
     settings,

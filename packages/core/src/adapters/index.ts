@@ -5,3 +5,4 @@
  */
 
 export { OpenAICompatibleContentGenerator } from './openaiCompatibleContentGenerator.js';
+export { OllamaContentGenerator } from './ollamaContentGenerator.js';

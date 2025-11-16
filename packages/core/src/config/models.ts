@@ -5,9 +5,9 @@
  */
 
 // Default Ollama models - these should match models available in your Ollama instance
-export const DEFAULT_OLLAMA_MODEL = 'qwen2.5-coder:latest';
-export const DEFAULT_OLLAMA_FLASH_MODEL = 'llama3.2:latest';
-export const DEFAULT_OLLAMA_FLASH_LITE_MODEL = 'llama3.2:1b';
+export const DEFAULT_OLLAMA_MODEL = 'huihui_ai/qwen2.5-coder-abliterate:7b';
+export const DEFAULT_OLLAMA_FLASH_MODEL = 'freehuntx/qwen3-coder:8b';
+export const DEFAULT_OLLAMA_FLASH_LITE_MODEL = 'freehuntx/qwen3-coder:8b';
 
 export const DEFAULT_OLLAMA_MODEL_AUTO = 'auto';
 

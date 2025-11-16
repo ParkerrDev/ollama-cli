@@ -14,27 +14,46 @@ import type {
 } from '@google/genai';
 import type { ContentGenerator, ContentGeneratorConfig } from '../core/contentGenerator.js';
 
-interface OpenAIMessage {
+interface OllamaMessage {
   role: string;
-  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+  content: string;
 }
 
-interface OpenAIRequest {
+interface OllamaRequest {
   model: string;
-  messages: OpenAIMessage[];
-  temperature?: number;
-  max_tokens?: number;
+  messages: OllamaMessage[];
   stream?: boolean;
+  options?: {
+    temperature?: number;
+    num_predict?: number;
+  };
 }
 
-export class OpenAICompatibleContentGenerator implements ContentGenerator {
+interface OllamaResponse {
+  model: string;
+  created_at: string;
+  message: {
+    role: string;
+    content: string;
+  };
+  done: boolean;
+  done_reason?: string;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
+}
+
+export class OllamaContentGenerator implements ContentGenerator {
   constructor(protected config: ContentGeneratorConfig) {}
 
   /**
-   * Converts Gemini-style request to OpenAI-compatible format
+   * Converts Gemini-style request to Ollama format
    */
-  protected convertToOpenAIFormat(request: any): OpenAIRequest {
-    const messages: OpenAIMessage[] = [];
+  protected convertToOllamaFormat(request: any): OllamaRequest {
+    const messages: OllamaMessage[] = [];
 
     // Convert system instruction
     if (request.systemInstruction) {
@@ -55,12 +74,23 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
       }
     }
 
-    return {
+    const ollamaRequest: OllamaRequest = {
       model: request.model || this.config.model || 'llama3.2',
       messages,
-      temperature: request.generationConfig?.temperature,
-      max_tokens: request.generationConfig?.maxOutputTokens,
     };
+
+    // Add options if specified
+    if (request.generationConfig) {
+      ollamaRequest.options = {};
+      if (request.generationConfig.temperature !== undefined) {
+        ollamaRequest.options.temperature = request.generationConfig.temperature;
+      }
+      if (request.generationConfig.maxOutputTokens !== undefined) {
+        ollamaRequest.options.num_predict = request.generationConfig.maxOutputTokens;
+      }
+    }
+
+    return ollamaRequest;
   }
 
   /**
@@ -84,57 +114,27 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
   }
 
   /**
-   * Converts OpenAI response to Gemini format
+   * Converts Ollama response to Gemini format
    */
-  protected convertFromOpenAIFormat(openAIResponse: any, isStreaming = false): any {
-    if (isStreaming) {
-      const choice = openAIResponse.choices?.[0];
-      if (!choice) return null;
-
-      const delta = choice.delta;
-      if (!delta?.content) return null;
-
-      return {
-        candidates: [
-          {
-            content: {
-              role: 'model',
-              parts: [{ text: delta.content }],
-            },
-            finishReason: choice.finish_reason || undefined,
-          },
-        ],
-        text: delta.content,
-        data: {},
-        functionCalls: [],
-        executableCode: [],
-        codeExecutionResult: [],
-      };
-    }
-
-    const choice = openAIResponse.choices?.[0];
-    if (!choice) {
-      throw new Error('No choices in OpenAI response');
-    }
-
+  protected convertFromOllamaFormat(ollamaResponse: OllamaResponse): any {
     return {
       candidates: [
         {
           content: {
             role: 'model',
-            parts: [{ text: choice.message.content }],
+            parts: [{ text: ollamaResponse.message.content }],
           },
-          finishReason: choice.finish_reason || 'STOP',
+          finishReason: ollamaResponse.done_reason || undefined,
         },
       ],
-      usageMetadata: openAIResponse.usage
+      usageMetadata: ollamaResponse.eval_count
         ? {
-            promptTokenCount: openAIResponse.usage.prompt_tokens,
-            candidatesTokenCount: openAIResponse.usage.completion_tokens,
-            totalTokenCount: openAIResponse.usage.total_tokens,
+            promptTokenCount: ollamaResponse.prompt_eval_count || 0,
+            candidatesTokenCount: ollamaResponse.eval_count || 0,
+            totalTokenCount: (ollamaResponse.prompt_eval_count || 0) + (ollamaResponse.eval_count || 0),
           }
         : undefined,
-      text: choice.message.content,
+      text: ollamaResponse.message.content,
       data: {},
       functionCalls: [],
       executableCode: [],
@@ -146,17 +146,16 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
     request: GenerateContentParameters,
     userPromptId: string,
   ): Promise<GenerateContentResponse> {
-    const openAIRequest = this.convertToOpenAIFormat(request);
-    const endpoint = `${this.config.baseUrl}/chat/completions`;
+    const ollamaRequest = this.convertToOllamaFormat(request);
+    const endpoint = `${this.config.baseUrl}/api/chat`;
 
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(this.config.apiKey && { Authorization: `Bearer ${this.config.apiKey}` }),
         },
-        body: JSON.stringify(openAIRequest),
+        body: JSON.stringify({ ...ollamaRequest, stream: false }),
         signal: this.config.timeout ? AbortSignal.timeout(this.config.timeout) : undefined,
       });
 
@@ -165,8 +164,8 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
         throw new Error(`Ollama API Error: ${response.status} - ${errorMsg}`);
       }
 
-      const data = await response.json();
-      return this.convertFromOpenAIFormat(data);
+      const data: OllamaResponse = await response.json();
+      return this.convertFromOllamaFormat(data);
     } catch (error) {
       if (error instanceof TypeError && error.message === 'fetch failed') {
         throw new Error(
@@ -186,18 +185,16 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
     request: GenerateContentParameters,
     userPromptId: string,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
-    const self = this;
-    const openAIRequest = this.convertToOpenAIFormat(request);
-    const endpoint = `${this.config.baseUrl}/chat/completions`;
+    const ollamaRequest = this.convertToOllamaFormat(request);
+    const endpoint = `${this.config.baseUrl}/api/chat`;
 
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(this.config.apiKey && { Authorization: `Bearer ${this.config.apiKey}` }),
         },
-        body: JSON.stringify({ ...openAIRequest, stream: true }),
+        body: JSON.stringify({ ...ollamaRequest, stream: true }),
         signal: this.config.timeout ? AbortSignal.timeout(this.config.timeout) : undefined,
       });
 
@@ -220,33 +217,48 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
             const { done, value } = await reader.read();
             if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') {
-                return;
-              }
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
 
               try {
-                const parsed = JSON.parse(data);
-                const convertedResponse = self.convertFromOpenAIFormat(parsed, true);
-                if (convertedResponse) {
-                  yield convertedResponse;
+                const parsed: OllamaResponse = JSON.parse(trimmed);
+                
+                // Yield each chunk
+                yield {
+                  candidates: [
+                    {
+                      content: {
+                        role: 'model',
+                        parts: [{ text: parsed.message.content }],
+                      },
+                      finishReason: parsed.done ? parsed.done_reason : undefined,
+                    },
+                  ],
+                  text: parsed.message.content,
+                  data: {},
+                  functionCalls: [],
+                  executableCode: [],
+                  codeExecutionResult: [],
+                } as any;
+
+                if (parsed.done) {
+                  return;
                 }
               } catch (e) {
                 // Skip invalid JSON chunks
+                console.error('Failed to parse Ollama response:', trimmed, e);
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
-      } finally {
-        reader.releaseLock();
       }
-    }
 
       return generator();
     } catch (error) {
@@ -265,19 +277,48 @@ export class OpenAICompatibleContentGenerator implements ContentGenerator {
   }
 
   async countTokens(request: CountTokensParameters): Promise<CountTokensResponse> {
-    // Approximate token counting for Ollama
-    const contents: any = request.contents;
-    const text = Array.isArray(contents) && contents.length > 0 
-      ? this.partsToText(contents[0]?.parts || [])
-      : '';
-    const approximateTokens = Math.ceil(text.length / 4); // Rough estimate: 1 token ≈ 4 chars
-
+    // Ollama doesn't have a dedicated token counting endpoint
+    // Return an estimate based on character count (rough approximation)
+    const text = JSON.stringify(request);
+    const estimatedTokens = Math.ceil(text.length / 4);
+    
     return {
-      totalTokens: approximateTokens,
+      totalTokens: estimatedTokens,
     };
   }
 
   async embedContent(request: EmbedContentParameters): Promise<EmbedContentResponse> {
-    throw new Error('Embeddings not yet implemented for Ollama');
+    const endpoint = `${this.config.baseUrl}/api/embeddings`;
+    
+    // Extract text from request
+    const contents: any = request.contents || [];
+    const text = contents[0]?.parts?.[0]?.text || '';
+    
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'nomic-embed-text',
+          prompt: text,
+        }),
+        signal: this.config.timeout ? AbortSignal.timeout(this.config.timeout) : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama embedding error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        embeddings: {
+          values: data.embedding || [],
+        },
+      } as any;
+    } catch (error) {
+      throw new Error(`Failed to generate embeddings: ${error}`);
+    }
   }
 }

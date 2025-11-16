@@ -36,6 +36,9 @@ export * from './core/recordingContentGenerator.js';
 
 export * from './fallback/types.js';
 
+// Export Ollama client
+export * from './ollama/client.js';
+
 export * from './code_assist/codeAssist.js';
 export * from './code_assist/oauth2.js';
 export * from './code_assist/server.js';

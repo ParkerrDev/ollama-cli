@@ -231,7 +231,7 @@ describe('validateNonInterActiveAuth', () => {
   });
 
   it('uses configuredAuthType over environment variables', async () => {
-    process.env['OLLAMA_BASE_URL'] = 'http://localhost:11434';
+    process.env['OLLAMA_BASE_URL'] = 'http://localhost:11434/v1';
     const nonInteractiveConfig = createLocalMockConfig({
       refreshAuth: refreshAuthMock,
     });

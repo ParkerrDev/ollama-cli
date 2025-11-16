@@ -6,7 +6,7 @@
 
 import { getErrorMessage, isNodeError } from './errors.js';
 import { URL } from 'node:url';
-import { ProxyAgent, setGlobalDispatcher } from 'undici';
+import { EnvHttpProxyAgent, setGlobalDispatcher } from 'undici';
 
 const PRIVATE_IP_RANGES = [
   /^10\./,
@@ -58,5 +58,14 @@ export async function fetchWithTimeout(
 }
 
 export function setGlobalProxy(proxy: string) {
-  setGlobalDispatcher(new ProxyAgent(proxy));
+  // Use EnvHttpProxyAgent which respects NO_PROXY environment variable
+  // Set NO_PROXY to include localhost
+  if (!process.env['NO_PROXY']) {
+    process.env['NO_PROXY'] = 'localhost,127.0.0.1';
+  } else if (!process.env['NO_PROXY'].includes('localhost')) {
+    process.env['NO_PROXY'] += ',localhost,127.0.0.1';
+  }
+  
+  const proxyAgent = new EnvHttpProxyAgent();
+  setGlobalDispatcher(proxyAgent);
 }
