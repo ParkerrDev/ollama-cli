@@ -562,12 +562,12 @@ export async function loadCliConfig(
 
   const useModelRouter = settings.experimental?.useModelRouter ?? true;
   const baseUrl = process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
-  
+
   // If no model is specified, try to get the smallest available model
   let defaultModel = useModelRouter
     ? DEFAULT_OLLAMA_MODEL_AUTO
     : DEFAULT_OLLAMA_MODEL;
-  
+
   // Check if we need to fetch default model from Ollama
   if (!argv.model && !process.env['OLLAMA_MODEL'] && !settings.model?.name) {
     const smallestAvailable = await selectSmallestOllamaModel(baseUrl);
@@ -580,7 +580,7 @@ export async function loadCliConfig(
       }
     }
   }
-  
+
   const resolvedModel: string =
     argv.model ||
     process.env['OLLAMA_MODEL'] ||
@@ -666,8 +666,7 @@ export async function loadCliConfig(
         'summarizer-shell': {
           ...DEFAULT_MODEL_CONFIGS.aliases?.['summarizer-shell'],
           modelConfig: {
-            ...DEFAULT_MODEL_CONFIGS.aliases?.['summarizer-shell']
-              ?.modelConfig,
+            ...DEFAULT_MODEL_CONFIGS.aliases?.['summarizer-shell']?.modelConfig,
             model: smallestModel,
           },
         },

@@ -1,0 +1,13 @@
+{
+  // MCP server configuration for tool routing
+  "mcpServers": [
+    {
+      "id": "local-mcp-server",
+      "name": "Local MCP Server",
+      "transport": "stdio",
+      "command": "mcp-server",
+      "args": [],
+      "enabled": true
+    }
+  ]
+}

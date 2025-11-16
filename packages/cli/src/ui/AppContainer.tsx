@@ -182,10 +182,10 @@ export const AppContainer = (props: AppContainerProps) => {
   );
 
   const extensionManager = config.getExtensionLoader() as ExtensionManager;
-  
+
   const { addConfirmUpdateExtensionRequest, confirmUpdateExtensionRequests } =
     useConfirmUpdateRequests();
-    
+
   // Set up extension manager request handlers in useEffect to avoid setState during render
   useEffect(() => {
     extensionManager.setRequestConsent((description) =>
@@ -193,7 +193,7 @@ export const AppContainer = (props: AppContainerProps) => {
     );
     extensionManager.setRequestSetting();
   }, [extensionManager, addConfirmUpdateExtensionRequest]);
-  
+
   const {
     extensionsUpdateState,
     extensionsUpdateStateInternal,

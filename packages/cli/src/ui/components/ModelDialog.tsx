@@ -47,7 +47,9 @@ const DEFAULT_MODEL_OPTIONS: ModelOption[] = [];
 export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
   const config = useContext(ConfigContext);
   const settings = useSettings();
-  const [modelOptions, setModelOptions] = useState<ModelOption[]>(DEFAULT_MODEL_OPTIONS);
+  const [modelOptions, setModelOptions] = useState<ModelOption[]>(
+    DEFAULT_MODEL_OPTIONS,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,27 +57,32 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const baseUrl = process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
+        const baseUrl =
+          process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434';
         const client = new OllamaModelClient(baseUrl);
         const models = await client.listModels();
 
         if (models.length > 0) {
           // Convert Ollama models to ModelOption format
-          const ollamaOptions: ModelOption[] = models.map((model: OllamaModel, index: number) => ({
-            value: model.name,
-            title: model.name,
-            description: model.details?.family 
-              ? `${model.details.family} - ${formatBytes(model.size)}`
-              : `Size: ${formatBytes(model.size)}`,
-            key: `${model.name}-${model.digest.substring(0, 8)}-${index}`, // Use digest prefix and index for uniqueness
-          }));
+          const ollamaOptions: ModelOption[] = models.map(
+            (model: OllamaModel, index: number) => ({
+              value: model.name,
+              title: model.name,
+              description: model.details?.family
+                ? `${model.details.family} - ${formatBytes(model.size)}`
+                : `Size: ${formatBytes(model.size)}`,
+              key: `${model.name}-${model.digest.substring(0, 8)}-${index}`, // Use digest prefix and index for uniqueness
+            }),
+          );
 
           setModelOptions(ollamaOptions);
         }
         setLoading(false);
       } catch (err) {
         console.error('Failed to fetch Ollama models:', err);
-        setError('Could not connect to Ollama server. Please ensure Ollama is running.');
+        setError(
+          'Could not connect to Ollama server. Please ensure Ollama is running.',
+        );
         setLoading(false);
       }
     };
@@ -97,7 +104,10 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
 
   // Calculate the initial index based on the preferred model.
   const initialIndex = useMemo(
-    () => modelOptions.findIndex((option: ModelOption) => option.value === preferredModel),
+    () =>
+      modelOptions.findIndex(
+        (option: ModelOption) => option.value === preferredModel,
+      ),
     [preferredModel, modelOptions],
   );
 
@@ -125,19 +135,21 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
       width="100%"
     >
       <Text bold>Select Model</Text>
-      
+
       {loading && (
         <Box marginTop={1}>
-          <Text color={theme.text.secondary}>Loading models from Ollama...</Text>
+          <Text color={theme.text.secondary}>
+            Loading models from Ollama...
+          </Text>
         </Box>
       )}
-      
+
       {error && (
         <Box marginTop={1}>
           <Text color={theme.status.warning}>{error}</Text>
         </Box>
       )}
-      
+
       {!loading && (
         <Box marginTop={1}>
           <DescriptiveRadioButtonSelect
@@ -148,7 +160,7 @@ export function ModelDialog({ onClose }: ModelDialogProps): React.JSX.Element {
           />
         </Box>
       )}
-      
+
       <Box flexDirection="column">
         <Text color={theme.text.secondary}>
           {'> To use a specific Ollama model on startup, use the --model flag.'}

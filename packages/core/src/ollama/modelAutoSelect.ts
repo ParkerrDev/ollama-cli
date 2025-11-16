@@ -36,7 +36,9 @@ async function testModelHealth(
     const data = await response.json();
     // Check for error in response
     if ('error' in data) {
-      debugLogger.debug(`Model ${modelName} health check failed: ${data.error}`);
+      debugLogger.debug(
+        `Model ${modelName} health check failed: ${data.error}`,
+      );
       return false;
     }
 
@@ -56,19 +58,19 @@ export async function selectSmallestOllamaModel(
   try {
     const client = new OllamaModelClient(baseUrl, 5000); // 5 second timeout
     const models = await client.listModels();
-    
+
     if (models.length === 0) {
       return null;
     }
-    
+
     // Sort by size (smallest first)
     const sortedModels = [...models].sort((a, b) => a.size - b.size);
-    
+
     // Try models in order of size until we find a healthy one
     for (const model of sortedModels) {
       debugLogger.debug(`Testing model health: ${model.name}...`);
       const isHealthy = await testModelHealth(model.name, baseUrl);
-      
+
       if (isHealthy) {
         debugLogger.debug(
           `Auto-selected smallest healthy model: ${model.name} (${(model.size / 1024 / 1024 / 1024).toFixed(2)} GB)`,
@@ -78,7 +80,7 @@ export async function selectSmallestOllamaModel(
         debugLogger.debug(`Model ${model.name} is not healthy, trying next...`);
       }
     }
-    
+
     // If no healthy models found, return the smallest anyway as fallback
     debugLogger.warn('No healthy models found, using smallest model anyway');
     return sortedModels[0].name;
@@ -95,11 +97,10 @@ export function formatModelList(models: OllamaModel[]): string {
   if (models.length === 0) {
     return 'No models found.';
   }
-  
+
   return models
     .map(
-      (m) =>
-        `  - ${m.name} (${(m.size / 1024 / 1024 / 1024).toFixed(2)} GB)`,
+      (m) => `  - ${m.name} (${(m.size / 1024 / 1024 / 1024).toFixed(2)} GB)`,
     )
     .join('\n');
 }

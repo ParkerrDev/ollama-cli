@@ -42,7 +42,11 @@ export function getEffectiveModel(
 
   // If a "lite" or small model is requested, honor it. This allows for variations of
   // lite models without needing to list them all as constants.
-  if (requestedModel.includes('lite') || requestedModel.includes('1b') || requestedModel.includes('3b')) {
+  if (
+    requestedModel.includes('lite') ||
+    requestedModel.includes('1b') ||
+    requestedModel.includes('3b')
+  ) {
     return requestedModel;
   }
 
